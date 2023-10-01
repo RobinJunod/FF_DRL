@@ -31,37 +31,6 @@ def neg_data_creation(x_pos):
     x_neg  = x_pos[:, [0, 1, 2, 4, 3]]
     return x_neg
 
-## Simple network build with torch
-#class SimpleNN(nn.Module):
-#    def __init__(self, input_size, hidden_size, output_size):
-#        super(SimpleNN, self).__init__()
-#        self.fc1 = nn.Linear(input_size, hidden_size)  # Input layer to hidden layer
-#        self.fc2 = nn.Linear(hidden_size, output_size)  # Hidden layer to output layer
-#    def forward(self, x):
-#        x = F.relu(self.fc1(x))  # Apply ReLU activation to the hidden layer
-#        x = self.fc2(x)  # Output layer
-#        return F.softmax(x, dim=1)  # Apply softmax activation to the output
-
-
-## Activation function (sigmoid) for the last layer
-#def Sigmoid(x):
-#    return 1 / (1 + torch.exp(-x))
-## ReLu
-#def ReLu(x):
-#    return x if x > 0 else 0
-#def ReLu_derivate(x):
-#    return 1 if x > 0 else 0
-#
-## To use after each layers
-#def Normalize(x):
-#    return x / (torch.norm(x, p=2) + 1.e4)
-#
-## compute the loss
-#def loss(g_pos, g_neg, threshold):
-#    torch.log(1 + torch.exp(torch.cat([
-#                -g_pos + threshold,
-#                g_neg - threshold]))).mean()
-
 
 # layer of the foward foward network
 class Layer(nn.Linear):
@@ -69,33 +38,44 @@ class Layer(nn.Linear):
                  bias=True, device=None, dtype=None):
         super().__init__(in_features, out_features, bias, device, dtype)
         self.relu = torch.nn.ReLU()
-        self.opt = torch.optim.SGD(self.parameters(), lr=0.03, momentum=0.9)
-        self.threshold = 2.0
-        self.num_epochs = 200
-    
-    # The foward pass
-    # def forward(self, x):
-    #     # x must be a torch tensor
-    #     x_normalized = x / (torch.norm(x, p=2) + 1.e4)
-    #     print(x_normalized)
-    #     print(self.weight.T)
-    #     x_ =  torch.mm(x_normalized, self.weight.T) + self.bias.unsqueeze(0)
-    #     x_ = self.relu(x_)
-    #     return x_
+        #self.opt = torch.optim.SGD(self.parameters(), lr=0.03, momentum=0.9)
+        self.opt = torch.optim.Adam(self.parameters(), lr=0.03)
+        self.threshold = 3.0
+        self.num_epochs = 500
     
     def forward(self, x):
+        """Forward function that takes a set of points (matrix) as input
+        """
         x_direction = x / (x.norm(2, 1, keepdim=True) + 1e-4)
         return self.relu(
             torch.mm(x_direction, self.weight.T) +
             self.bias.unsqueeze(0))
     
-    def forward_inference(self, x):
+    def forward_onesample(self, x):
+        """Same as the forward fucntion but takes a vector for x and not a matrix
+        """
         x_norm = x.norm(2)
         x_direction = x / (x_norm + 1e-4)
         linear_result = torch.matmul(self.weight, x_direction) + self.bias
         output = torch.relu(linear_result)
         return output
         
+    def goodness_onesample(self, x):
+        """ Compute the goodness for one sample
+        """
+        with torch.no_grad():
+            goodness = self.forward_onesample(x).pow(2).mean() - self.threshold
+            forwarded_x = self.forward_onesample(x)
+        return goodness, forwarded_x
+    
+    def goodness(self, X):
+        """ Compute the goodness for multiples samples sotre in a tensor matrix
+        """
+        with torch.no_grad():
+            goodness = self.forward(X).pow(2).mean(1) - self.threshold
+            forwarded_x = self.forward(X)
+        return goodness, forwarded_x
+    
     def train(self, x_pos, x_neg):
         for i in range(self.num_epochs):
             g_pos = self.forward(x_pos).pow(2).mean(1)
@@ -113,13 +93,9 @@ class Layer(nn.Linear):
             loss.backward()
             self.opt.step()
         return self.forward(x_pos).detach(), self.forward(x_neg).detach()
-
-    def goodness(self, x):
-        with torch.no_grad():
-            goodness = self.forward_inference(x).pow(2).mean() - self.threshold
-            forwarded_x = self.forward_inference(x)
-        return goodness, forwarded_x
     
+    
+
 # Creation of the network with multiples layers
 class Net(torch.nn.Module):
     def __init__(self, dims):
@@ -135,27 +111,37 @@ class Net(torch.nn.Module):
             h_pos, h_neg = layer.train(h_pos, h_neg)
             
 
-    def predict(self, x, Display=False):
+    def predict(self, x, Display=True):
+        """Return the goodness of a given input
+        Args:
+            x (_type_): Input data, can be either a vector (single sample) or a matrix (multiple samples)
+            Display (bool, optional): To print stuff. Defaults to True.
+        Returns:
+            torch tensor float : return the total goodness
+        """
         g_tot = 0
-        for i, layer in enumerate(self.layers):
-            g_layer, next_x = layer.goodness(x)
-            x = next_x
-            
-            # print('goodness at layer', i, ' : ', g_layer)
-            g_tot += g_layer
+        if len(x.shape) == 1: # Case of a vector
+            for i, layer in enumerate(self.layers):
+                g_layer, next_x = layer.goodness_onesample(x)
+                x = next_x
+                g_tot += g_layer
+            if Display : print('goodness total for sample : ', g_tot)
+                    
+        elif len(x.shape)==2:
+            for i, layer in enumerate(self.layers):
+                g_layer, next_x = layer.goodness(x)
+                x = next_x
+                g_tot += g_layer
+                
+        return g_tot
         
-        print('goodness total : ', g_tot)
-        if Display:
-            if g_tot > 0:
-                print('the data is positive, overall goodness : ', g_tot.item())
-            else:
-                print('the data is negative, overall goodness : ', g_tot.item())
-        
+        #TODO: Create a final layer for classification or regression that will take as input all the previous layer
         
 
 if __name__=='__main__':
     # custom dataset into np array
     data, label =  dataset_import()
+    
     x_pos = one_hot_augmentation(data, label)
     x_neg = neg_data_creation(x_pos)
     # convert to torch tensor
@@ -163,13 +149,22 @@ if __name__=='__main__':
     x_neg = torch.tensor(x_neg).float()
     
     # Create the network
-    net = Net([5, 10, 10])
+    net = Net([5, 20, 20, 20, 20])
     net.train(x_pos, x_neg)
     
     #%% Test the network
     for i in range(len(x_pos)):
         x_test = x_neg[i].clone().detach()
-        net.predict(x_test)
-    # %%
+        x_goodness = net.predict(x_test)
+        
+    # %% Test the network without a loop
+    x_test = x_neg
+    x_goodness = net.predict(x_test)
+    print('rate of neg samples correctely labelled :', (x_goodness < 0).sum().item()/len(x_goodness))
+    
+    x_test = x_pos
+    x_goodness = net.predict(x_test)
+    print('rate of pos samples correctely labelled :', (x_goodness > 0).sum().item()/len(x_goodness))
+    
     
     

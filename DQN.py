@@ -77,8 +77,8 @@ ep_length_evolution = []
 # Evolution of the loss
 loss_evolution = []
 
-#%% Training loop
-num_episodes = 300
+#% Training loop
+num_episodes = 200
 for episode in range(num_episodes):
     state, info = env.reset()
     state = torch.tensor(state, dtype=torch.float32)
@@ -124,7 +124,8 @@ for episode in range(num_episodes):
             q_values = q_network(states)
             # The next q values are determined by the more stable network (off policy)
             next_q_values = target_network(next_states).max(1).values
-            # The target q value is the computed as the sum of the reward and the futur best Q values 
+            # The target q value is the computed as the sum of the reward and the futur best Q values
+            # for cartpole the reward is 1 at each step 
             target_q_values = rewards + (1 - dones) * gamma * next_q_values
             # takes the values of the action choosen by the epsilon greedy !! (so we have a q_value of dim 2 projecting to dim 1 (only retaining the best))
             # It is a bit like taking the 'V-value' of the Q-value by selecting the best action
@@ -139,6 +140,7 @@ for episode in range(num_episodes):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+
 
         # Update the target network
         if episode % target_update_frequency == 0:
@@ -202,7 +204,7 @@ def test_policy(env, q_network):
 #%%
 if __name__ == '__main__':
     env = gym.make('CartPole-v1', render_mode='human')
-    test_policy(env, q_network)
+    t = test_policy(env, q_network)
     #env = gym.make('CartPole-v1', render_mode='rgb_array')
     ## play a final set of episodes
     ##env = wrappers.Monitor(env, 'my_awesome_dir', force='True')
