@@ -6,9 +6,12 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torch.nn.functional as F
+
 import random
 import matplotlib.pyplot as plt
 
+from plotting_tools import moving_average
 
 # plotting a graph of multiples tuples as points
 def plot_tuples(tuples_list, x_label, y_label, title):
@@ -24,16 +27,24 @@ def plot_tuples(tuples_list, x_label, y_label, title):
     plt.show()
 
 
-def DRL_train_network(env, ff_net, num_episodes=500):
+def DRL_train_network(env, ff_net, num_episodes=400):
     # Hyperparameters
-    learning_rate = 0.001
-    gamma = 0.99
     epsilon_start = 1.0
     epsilon_end = 0.01
-    epsilon_decay = 0.995
-    memory_capacity = 1000
-    batch_size = 32
+    epsilon_decay = 0.997
+    
+    theta_start = 25
+    theta_end = 5
+    theta_decay = 0.997
+    
+    
+    memory_capacity = 10000
 
+    
+    # Initialize epsilon for epsilon-greedy exploration
+    epsilon = epsilon_start
+    # Initialize theta for negative data creation
+    theta = theta_start
 
     # Initialize replay memory for good moves
     episode_memory = []
@@ -42,8 +53,6 @@ def DRL_train_network(env, ff_net, num_episodes=500):
     # Initialize replay memory for bad moves
     replay_memory_negative_list = []
     
-    # Initialize epsilon for epsilon-greedy exploration
-    epsilon = epsilon_start
     # Reward evolution 
     reward_evolution = [] 
     # Episode length evolution
@@ -81,27 +90,26 @@ def DRL_train_network(env, ff_net, num_episodes=500):
             # Store the transition in replay memory
             # replay_memory.append((state, action, reward, next_state, done))
             # Just store the state action pair
-            # TODO : idea, put the next state into the input of the netwrok to have a kind of anticipation??
-            # Normally can't be done due to the enviornment
             episode_memory.append(torch.cat((state, torch.tensor([action])), dim=0))
             total_reward += reward
             state = next_state
 
 
-        # Epsilon decay
+        # Epsilon and Theta decay
         epsilon = max(epsilon_end, epsilon * epsilon_decay)
+        theta = max(theta_end, theta * theta_decay)
         
         # sort the replay memory such that the good runs stays in it (for better estimation of pos and neg data)
-        replay_memory_positive_list.append(episode_memory[:-20])
+        replay_memory_positive_list.append(episode_memory[:-int(theta)])
         replay_memory_positive_list = sorted(replay_memory_positive_list, key=len, reverse=True)
         replay_memory_positive = [item for sublist in replay_memory_positive_list for item in sublist]
-        if len(replay_memory_positive_list) > 50:
+        if len(replay_memory_positive_list) > 100:
             replay_memory_positive_list.pop()
     
-        replay_memory_negative_list.append(episode_memory[-20:])
+        replay_memory_negative_list.append(episode_memory[-int(theta):])
         replay_memory_negative_list = sorted(replay_memory_negative_list, key=len, reverse=True)
         replay_memory_negative = [item for sublist in replay_memory_negative_list for item in sublist]
-        if len(replay_memory_negative_list) > 50:
+        if len(replay_memory_negative_list) > 200:
             replay_memory_negative_list.pop()
             
         # Clear the replay memory of 1 run
@@ -122,11 +130,11 @@ def DRL_train_network(env, ff_net, num_episodes=500):
 
         # Selecting k random sample in pos/neg memory data
         # x_pos has to be in a tensor
-        neg_selection = random.choices(replay_memory_negative, k=128)
+        neg_selection = random.choices(replay_memory_negative, k=256)
         # x_pos and x_neg must be tensor
         x_neg = torch.stack(neg_selection)
         if replay_memory_positive: # early stage when no pos data
-            pos_selection = random.choices(replay_memory_positive, k=128)
+            pos_selection = random.choices(replay_memory_positive, k=256)
             # x_pos and x_neg must be tensor
             x_pos = torch.stack(pos_selection)
         else:
@@ -138,15 +146,14 @@ def DRL_train_network(env, ff_net, num_episodes=500):
         if pos_selection and neg_selection:
             print('--------------start the training-----------------')
             print('replay pos mem list :',[len(inner_list) for inner_list in replay_memory_positive_list])
-            print('replay neg mem list :',[len(inner_list) for inner_list in replay_memory_negative_list])
-            
-            ff_net.train(x_pos,x_neg, num_epochs=len(replay_memory_positive_list[0]))
+            #print('replay neg mem list :',[len(inner_list) for inner_list in replay_memory_negative_list])
+            ff_net.train(x_pos,x_neg, num_epochs=50)
        
         
         # Log graph and plot outputs
         print(f"Episode {episode + 1}, Total Reward: {total_reward}")
         print(f'length of repNeglist: {len(replay_memory_negative_list)} length of repNeg: {len(replay_memory_negative)} length of reppos: {len(replay_memory_positive)}')
-        print(f'length of the first repposlist list {len(replay_memory_positive_list[0])}')
+        #print(f'length of the first repposlist list {len(replay_memory_positive_list[0])}')
         
         # Reward evolution
         reward_evolution.append((episode, total_reward))
@@ -170,10 +177,10 @@ class Layer(nn.Linear):
                  bias=True, device=None, dtype=None):
         super().__init__(in_features, out_features, bias, device, dtype)
         self.relu = torch.nn.ReLU()
-        self.opt = torch.optim.Adam(self.parameters(), lr=0.03)
+        self.opt = optim.Adam(self.parameters(), lr=0.03)
         # TODO : add L2 regularization
         #self.opt = torch.optim.Adam(self.parameters(), lr=0.03, weight_decay=5e-5)
-        self.threshold = 2.0
+        self.threshold = 3.0
     
     def forward(self, x):
         """Forward function that takes a set of points (matrix) as input
@@ -182,6 +189,13 @@ class Layer(nn.Linear):
         return self.relu(
             torch.mm(x_direction, self.weight.T) +
             self.bias.unsqueeze(0))
+    def goodness(self, X):
+        """ Compute the goodness for multiples samples sotre in a tensor matrix
+        """
+        with torch.no_grad():
+            goodness = self.forward(X).pow(2).mean(1) - self.threshold
+            forwarded_x = self.forward(X)
+        return goodness, forwarded_x
     
     def forward_onesample(self, x):
         """Same as the forward fucntion but takes a vector for x and not a matrix
@@ -191,7 +205,6 @@ class Layer(nn.Linear):
         linear_result = torch.matmul(self.weight, x_direction) + self.bias
         output = torch.relu(linear_result)
         return output
-        
     def goodness_onesample(self, x):
         """ Compute the goodness for one sample
         """
@@ -200,22 +213,18 @@ class Layer(nn.Linear):
             forwarded_x = self.forward_onesample(x)
         return goodness, forwarded_x
     
-    def goodness(self, X):
-        """ Compute the goodness for multiples samples sotre in a tensor matrix
-        """
-        with torch.no_grad():
-            goodness = self.forward(X).pow(2).mean(1) - self.threshold
-            forwarded_x = self.forward(X)
-        return goodness, forwarded_x
-    
     def train(self, x_pos, x_neg, num_epochs=500):
         for i in range(num_epochs):
             g_pos = self.forward(x_pos).pow(2).mean(1) # g_pos: vector (size forward(s-a)) 
             g_neg = self.forward(x_neg).pow(2).mean(1)
             #TODO: explain and comprenand the loss function, Try some other types of loss function
             #TODO: maybe the loss function is nan because of that 
-            positive_loss = torch.log(1 + torch.exp(-g_pos + self.threshold)).mean()
-            negative_loss = torch.log(1 + torch.exp(g_neg - self.threshold)).mean()
+            #positive_loss = torch.log(1 + torch.exp(-g_pos + self.threshold)).mean()
+            #negative_loss = torch.log(1 + torch.exp(g_neg - self.threshold)).mean()
+            # new loss function
+            positive_loss = F.softplus(-g_pos + self.threshold).mean()
+            negative_loss = F.softplus(g_neg - self.threshold).mean()
+            
             #loss = torch.log(1 + torch.exp(torch.cat([
             #    -g_pos + self.threshold,
             #    g_neg - self.threshold]))).mean()
@@ -226,6 +235,8 @@ class Layer(nn.Linear):
             loss.backward()
             self.opt.step()
         return self.forward(x_pos).detach(), self.forward(x_neg).detach()
+        
+    
 
 
 # Creation of the network with multiples layers
@@ -266,9 +277,6 @@ class Net(torch.nn.Module):
                 
         return g_tot
 
-        
-        
-
 
 
 
@@ -282,13 +290,12 @@ if __name__ == '__main__':
     print(f'input size : {input_size}')
     # Create the forward forward network
     ff_net =  Net([input_size, 20, 10, 10])
-    ff_net_trained, logs = DRL_train_network(env, ff_net, num_episodes=500)
+    ff_net_trained, logs = DRL_train_network(env, ff_net, num_episodes=2000)
     
     # plot the logs
     reward_evolution, ep_length_evolution = logs
-    # plot the reward evolution
-    plot_tuples(reward_evolution, 'Episode', 'Total Reward', 'Reward Evolution Over Episodes')
-    # plot the reward evolution
-    plot_tuples(ep_length_evolution, 'Episode', 'Episode Length', 'Evolution of the Episode Lengths')
 
+    # plot the reward evolution
+    plot_tuples(reward_evolution, 'Episode', 'Reward', 'Evolution of the Reward')
+    moving_average(reward_evolution,x_axis_name='Episode',y_axsis_name='Reward', title='Adaptative negative data',window_size=50)
         

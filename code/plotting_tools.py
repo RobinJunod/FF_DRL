@@ -1,5 +1,5 @@
-import matplotlib as plt
-import pandas as pd
+#%%
+import matplotlib.pyplot as plt
 import numpy as np
 
 # From a list of tuple 2D plot a simple graph
