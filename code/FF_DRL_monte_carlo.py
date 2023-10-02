@@ -107,9 +107,8 @@ def DRL_train_network(env, ff_net, num_episodes=400):
             replay_memory_positive_list.pop()
     
         replay_memory_negative_list.append(episode_memory[-int(theta):])
-        replay_memory_negative_list = sorted(replay_memory_negative_list, key=len, reverse=True)
         replay_memory_negative = [item for sublist in replay_memory_negative_list for item in sublist]
-        if len(replay_memory_negative_list) > 200:
+        if len(replay_memory_negative_list) > 2000:
             replay_memory_negative_list.pop()
             
         # Clear the replay memory of 1 run
@@ -147,7 +146,7 @@ def DRL_train_network(env, ff_net, num_episodes=400):
             print('--------------start the training-----------------')
             print('replay pos mem list :',[len(inner_list) for inner_list in replay_memory_positive_list])
             #print('replay neg mem list :',[len(inner_list) for inner_list in replay_memory_negative_list])
-            ff_net.train(x_pos,x_neg, num_epochs=50)
+            ff_net.train(x_pos,x_neg, num_epochs=100)
        
         
         # Log graph and plot outputs
@@ -177,7 +176,7 @@ class Layer(nn.Linear):
                  bias=True, device=None, dtype=None):
         super().__init__(in_features, out_features, bias, device, dtype)
         self.relu = torch.nn.ReLU()
-        self.opt = optim.Adam(self.parameters(), lr=0.03)
+        self.opt = optim.Adam(self.parameters(), lr=0.01)
         # TODO : add L2 regularization
         #self.opt = torch.optim.Adam(self.parameters(), lr=0.03, weight_decay=5e-5)
         self.threshold = 3.0
@@ -253,7 +252,7 @@ class Net(torch.nn.Module):
             print('training layer', i, '...')
             h_pos, h_neg = layer.train(h_pos, h_neg, num_epochs=num_epochs)
 
-    def predict(self, x, Display=True):
+    def predict(self, x, Display=False):
         """Return the goodness of a given input
         Args:
             x (_type_): Input data, can be either a vector (single sample) or a matrix (multiple samples)
@@ -289,13 +288,13 @@ if __name__ == '__main__':
     input_size = env.observation_space.shape[0] + 1
     print(f'input size : {input_size}')
     # Create the forward forward network
-    ff_net =  Net([input_size, 20, 10, 10])
-    ff_net_trained, logs = DRL_train_network(env, ff_net, num_episodes=2000)
+    ff_net =  Net([input_size, 50, 20, 20])
+    ff_net_trained, logs = DRL_train_network(env, ff_net, num_episodes=10000)
     
     # plot the logs
     reward_evolution, ep_length_evolution = logs
 
     # plot the reward evolution
     plot_tuples(reward_evolution, 'Episode', 'Reward', 'Evolution of the Reward')
-    moving_average(reward_evolution,x_axis_name='Episode',y_axsis_name='Reward', title='Adaptative negative data',window_size=50)
+    moving_average(reward_evolution,x_axis_name='Episode',y_axsis_name='Reward', title='Adaptative negative data',window_size=100)
         
