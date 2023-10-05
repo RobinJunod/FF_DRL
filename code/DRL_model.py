@@ -22,15 +22,15 @@ def FakeDataGenerator():
 
 def DRL_train_network(env, ff_net, **kwargs):
     # Get the hyperparameters
-    memory_capacity = kwargs.get("memory_capacity", 10000) if kwargs.get("memory_capacity") is not None else 10000
-    num_episodes = kwargs.get("num_episodes", 50) if kwargs.get("num_episodes") is not None else 50
-    num_epochs = kwargs.get("num_epochs", 50) if kwargs.get("num_epochs") is not None else 50
-    epsilon_start = kwargs.get("epsilon_start", 1) if kwargs.get("epsilon_start") is not None else 1
-    epsilon_end = kwargs.get("epsilon_end", 0.1) if kwargs.get("epsilon_end") is not None else 0.1
-    epsilon_decay = kwargs.get("epsilon_decay", 0.995) if kwargs.get("epsilon_decay") is not None else 0.995
-    theta_start = kwargs.get("theta_start", 5) if kwargs.get("theta_start") is not None else 5
-    theta_end = kwargs.get("theta_end", 25) if kwargs.get("theta_end") is not None else 25
-    theta_decay = kwargs.get("theta_decay", 1.05) if kwargs.get("theta_decay") is not None else 1.05
+    memory_capacity = kwargs.get("memory_capacity")
+    num_episodes = kwargs.get("num_episodes")
+    num_epochs = kwargs.get("num_epochs")
+    epsilon_start = kwargs.get("epsilon_start")
+    epsilon_end = kwargs.get("epsilon_end")
+    epsilon_decay = kwargs.get("epsilon_decay")
+    theta_start = kwargs.get("theta_start")
+    theta_end = kwargs.get("theta_end")
+    theta_decay = kwargs.get("theta_decay")
 
     
     # Initialize epsilon for epsilon-greedy exploration
@@ -90,7 +90,7 @@ def DRL_train_network(env, ff_net, **kwargs):
 
         # Epsilon and Theta decay
         epsilon = max(epsilon_end, epsilon * epsilon_decay)
-        theta = min(theta_end, theta * theta_decay)
+        theta = min(theta_end, theta * theta_decay) if theta_decay > 1 else max(theta_end, theta * theta_decay)
         
         # sort the replay memory such that the good runs stays in it (for better estimation of pos and neg data)
         replay_memory_positive_list.append(episode_memory[:-int(theta)])
@@ -162,15 +162,15 @@ if __name__ == '__main__':
     # __________PARSERS__________
     parser = argparse.ArgumentParser(description="A simple command-line parser.")
     # Add command-line arguments
-    parser.add_argument("--memory_capacity", type=int, help="memory_capacity in the pos and negative list")
-    parser.add_argument("--num_episodes", type=int, help="Input file path")
-    parser.add_argument("--num_epochs", type=int, help="Output file path")
-    parser.add_argument("--epsilon_start", type=int, help="Epsilon greedy start")
-    parser.add_argument("--epsilon_decay", type=int, help="Epsilon greedy decay value after each episode")
-    parser.add_argument("--epsilon_end", type=int, help="Epsilon greedy end")
-    parser.add_argument("--theta_start", type=int, help="theta, the death horizon start")
-    parser.add_argument("--theta_decay", type=int, help="theta, the death horizon decay value after each episode")
-    parser.add_argument("--theta_end", type=int, help="theta, the death horizon end")
+    parser.add_argument("--memory_capacity", type=int, default=10000, help="memory_capacity in the pos and negative list")
+    parser.add_argument("--num_episodes", type=int, default=200, help="Input file path")
+    parser.add_argument("--num_epochs", type=int, default=50, help="Output file path")
+    parser.add_argument("--epsilon_start", type=int, default=1, help="Epsilon greedy start")
+    parser.add_argument("--epsilon_decay", type=int, default=0.995, help="Epsilon greedy decay value after each episode")
+    parser.add_argument("--epsilon_end", type=int, default=0.1, help="Epsilon greedy end")
+    parser.add_argument("--theta_start", type=int, default=5, help="theta, the death horizon start")
+    parser.add_argument("--theta_decay", type=int, default=1.05, help="theta, the death horizon decay value after each episode")
+    parser.add_argument("--theta_end", type=int, default=25, help="theta, the death horizon end")
     # Parse the command-line arguments
     args = parser.parse_args()
 
@@ -200,16 +200,11 @@ if __name__ == '__main__':
 
     # Plot the evolution
     # linear_graph(reward_evolution, 'Episode', 'Reward', 'Evolution of the Reward')
-    moving_average(reward_evolution,x_axis_name='Episode',y_axsis_name='Reward', title='Adaptative negative data',window_size=5)
+    # moving_average(reward_evolution,x_axis_name='Episode',y_axsis_name='Reward', title='Adaptative negative data',window_size=5)
+    
     
     # Saving the experiment
-    memory_capacity = 10000
-    num_episodes= 200
-    theta_start = 5
-    theta_end = 25
-    theta_decay = 1.05
-    
-    csv_file = f'config_{memory_capacity}_{num_episodes}_{theta_start}_{theta_end}.csv'
+    csv_file = f'config_{args.memory_capacity}_{args.num_episodes}_{args.theta_start}_{args.theta_end}.csv'
     # Create a Pandas DataFrame from the lists
     df1 = pd.DataFrame(reward_evolution, columns=['episode_R', 'Reward Evolution'])
     df2 = pd.DataFrame(exploration_rate_evolution, columns=['episode_E', 'Exploration Evolution'])

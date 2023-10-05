@@ -67,24 +67,24 @@ def tuple_list_from_csv(filename):
     s_name = df.columns[1]
     
     # Set the window size for the moving average and std calculation
-    window_size = 10  # You can adjust this value
+    window_size = 50  # You can adjust this value
 
     # Calculate the moving average using Pandas rolling function
-    df['MovingAverage'] = df[s_name].rolling(window=window_size).mean()
+    df['MovingAverage'] = df[s_name].rolling(window=window_size, center=True).mean()
 
     # Calculate the standard deviation using Pandas rolling function
-    df['StdDeviation'] = df[s_name].rolling(window=window_size).std()
+    df['StdDeviation'] = df[s_name].rolling(window=window_size,center=True).std()
 
     # Create a plot using Seaborn and Matplotlib
     plt.figure()
-    sns.lineplot(x=f_name, y=s_name, data=df, label=s_name, color='blue')
-    sns.lineplot(x=f_name, y='MovingAverage', data=df, label='Moving Average', color='green')
+    sns.scatterplot(x=f_name, y=s_name, data=df, label='Raw Data', color='blue',alpha=0.3)
+    sns.lineplot(x=f_name, y='MovingAverage', data=df, label='Moving Average', color='red')
 
     # Fill the area between MovingAverage - StdDeviation and MovingAverage + StdDeviation with a shaded region
     plt.fill_between(df[f_name], df['MovingAverage'] - df['StdDeviation'], df['MovingAverage'] + df['StdDeviation'], alpha=0.2, color='green', label='Std Deviation')
 
     # Customize the plot
-    plt.xlabel(f_name)
+    plt.xlabel('Episode')
     plt.ylabel(s_name)
     plt.title(f'Moving Average and Standard Deviation of {s_name}')
     plt.legend()
