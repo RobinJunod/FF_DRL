@@ -5,9 +5,9 @@
 # TODO : improving the plotting, to also have the variance plot
 #%%
 import argparse
-
-import torch
 import random
+import pandas as pd
+import torch
 import gym
 from gym import wrappers
 
@@ -20,36 +20,33 @@ def FakeDataGenerator():
     # TODO: create 2 types of negative data generators
     pass
 
-def DRL_train_network(
-                    env, 
-                    ff_net,
-                    memory_capacity = 10000,
-                    num_episodes=400,
-                    num_epochs = 100,
-                    epsilon_start = 1.0,
-                    epsilon_end = 0.01,
-                    epsilon_decay = 0.997,
-                    theta_start = 5,
-                    theta_end = 25,
-                    theta_decay = 1.05,
-                    ):
-            
+def DRL_train_network(env, ff_net, **kwargs):
+    # Get the hyperparameters
+    memory_capacity = kwargs.get("memory_capacity", 10000) if kwargs.get("memory_capacity") is not None else 10000
+    num_episodes = kwargs.get("num_episodes", 50) if kwargs.get("num_episodes") is not None else 50
+    num_epochs = kwargs.get("num_epochs", 50) if kwargs.get("num_epochs") is not None else 50
+    epsilon_start = kwargs.get("epsilon_start", 1) if kwargs.get("epsilon_start") is not None else 1
+    epsilon_end = kwargs.get("epsilon_end", 0.1) if kwargs.get("epsilon_end") is not None else 0.1
+    epsilon_decay = kwargs.get("epsilon_decay", 0.995) if kwargs.get("epsilon_decay") is not None else 0.995
+    theta_start = kwargs.get("theta_start", 5) if kwargs.get("theta_start") is not None else 5
+    theta_end = kwargs.get("theta_end", 25) if kwargs.get("theta_end") is not None else 25
+    theta_decay = kwargs.get("theta_decay", 1.05) if kwargs.get("theta_decay") is not None else 1.05
+
+    
     # Initialize epsilon for epsilon-greedy exploration
     epsilon = epsilon_start
     # Initialize theta for negative data creation
     theta = theta_start
-
     # Initialize replay memory for good moves
     episode_memory = []
     # Initialize replay memory for good moves
     replay_memory_positive_list = []
     # Initialize replay memory for bad moves
     replay_memory_negative_list = []
-    
     # Reward evolution 
     reward_evolution = [] 
     # Episode length evolution
-    ep_length_evolution = []
+    exploration_rate_evolution = []
 
 
     #% Training loop
@@ -57,14 +54,17 @@ def DRL_train_network(
         state, info = env.reset()
         state = torch.tensor(state, dtype=torch.float32)
         done = False
+        # Evaluation Variables
         total_reward = 0
+        exploration_count = 0
         episode_length = 0
-
+        
         # This loop plays an episode until the agent dies
         while not done and episode_length < 2000:
             episode_length += 1
             # Epsilon-greedy exploration
             if random.random() < epsilon:
+                exploration_count += 1
                 action = env.action_space.sample()  # Random action
             else:
                 with torch.no_grad():
@@ -110,7 +110,6 @@ def DRL_train_network(
             for _ in range(len(replay_memory_positive)-memory_capacity):
                 # pop the last item of the list which should be the smallest run
                 replay_memory_positive.pop()
-            
         if len(replay_memory_negative) > memory_capacity:
             # Simple memory inside an array
             for _ in range(len(replay_memory_negative)-memory_capacity):
@@ -121,7 +120,6 @@ def DRL_train_network(
         
 
         # Selecting k random sample in pos/neg memory data
-        # x_pos has to be in a tensor
         neg_selection = random.choices(replay_memory_negative, k=256)
         # x_pos and x_neg must be tensor
         x_neg = torch.stack(neg_selection)
@@ -145,16 +143,14 @@ def DRL_train_network(
         # Log graph and plot outputs
         print(f"Episode {episode + 1}, Total Reward: {total_reward}")
         print(f'length of repNeglist: {len(replay_memory_negative_list)} length of repNeg: {len(replay_memory_negative)} length of reppos: {len(replay_memory_positive)}')
-        #print(f'length of the first repposlist list {len(replay_memory_positive_list[0])}')
         
         # Reward evolution
         reward_evolution.append((episode, total_reward))
-        # Episode length evolution
-        ep_length_evolution.append((episode, episode_length))
+        # Epsilon greedy rate
+        exploration_rate_evolution.append((episode, exploration_count/episode_length))
 
-
- 
-    logs = (reward_evolution, ep_length_evolution)
+    
+    logs = (reward_evolution, exploration_rate_evolution)
     
     # Close the environment
     env.close()
@@ -166,22 +162,30 @@ if __name__ == '__main__':
     # __________PARSERS__________
     parser = argparse.ArgumentParser(description="A simple command-line parser.")
     # Add command-line arguments
-    parser.add_argument("--num_episodes", "-i", help="Input file path", required=False)
-    parser.add_argument("--num_epochs", "-o", help="Output file path", required=False)
-    parser.add_argument("--epsilon_start", "-v", help="Epsilon greedy start")
-    parser.add_argument("--epsilon_decay", "-v", help="Epsilon greedy decay value after each episode")
-    parser.add_argument("--epsilon_end", "-v", help="Epsilon greedy end")
-    
-    parser.add_argument("--theta_start", "-v", help="theta, the death horizon start")
-    parser.add_argument("--theta_decay", "-v", help="theta, the death horizon decay value after each episode")
-    parser.add_argument("--theta_end", "-v", help="theta, the death horizon end")
+    parser.add_argument("--memory_capacity", type=int, help="memory_capacity in the pos and negative list")
+    parser.add_argument("--num_episodes", type=int, help="Input file path")
+    parser.add_argument("--num_epochs", type=int, help="Output file path")
+    parser.add_argument("--epsilon_start", type=int, help="Epsilon greedy start")
+    parser.add_argument("--epsilon_decay", type=int, help="Epsilon greedy decay value after each episode")
+    parser.add_argument("--epsilon_end", type=int, help="Epsilon greedy end")
+    parser.add_argument("--theta_start", type=int, help="theta, the death horizon start")
+    parser.add_argument("--theta_decay", type=int, help="theta, the death horizon decay value after each episode")
+    parser.add_argument("--theta_end", type=int, help="theta, the death horizon end")
     # Parse the command-line arguments
     args = parser.parse_args()
-    
-    # Access the parsed arguments
-    input_file = args.input_file
-    output_file = args.output_file
-    verbose = args.verbose
+
+    # Create a dictionary of arguments and their values
+    arguments = {
+        "memory_capacity": args.memory_capacity,
+        "num_episodes": args.num_episodes,
+        "num_epochs": args.num_epochs,
+        "epsilon_start": args.epsilon_start,
+        "epsilon_decay": args.epsilon_decay,
+        "epsilon_end": args.epsilon_end,
+        "theta_start": args.theta_start,
+        "theta_decay": args.theta_decay,
+        "theta_end": args.theta_end,
+    }
     
     # Forward Forward algo 
     env = gym.make("CartPole-v1")
@@ -189,12 +193,30 @@ if __name__ == '__main__':
     print(f'input size : {input_size}')
     # Create the forward forward network
     ff_net =  Net([input_size, 50, 20, 20])
-    ff_net_trained, logs = DRL_train_network(env, ff_net, num_episodes=1000)
+    ff_net_trained, logs = DRL_train_network(env, ff_net, **arguments)
     
     # plot the logs
-    reward_evolution, ep_length_evolution = logs
+    reward_evolution, exploration_rate_evolution = logs
 
-    # plot the reward evolution
-    linear_graph(reward_evolution, 'Episode', 'Reward', 'Evolution of the Reward')
-    moving_average(reward_evolution,x_axis_name='Episode',y_axsis_name='Reward', title='Adaptative negative data',window_size=100)
-        
+    # Plot the evolution
+    # linear_graph(reward_evolution, 'Episode', 'Reward', 'Evolution of the Reward')
+    moving_average(reward_evolution,x_axis_name='Episode',y_axsis_name='Reward', title='Adaptative negative data',window_size=5)
+    
+    # Saving the experiment
+    memory_capacity = 10000
+    num_episodes= 200
+    theta_start = 5
+    theta_end = 25
+    theta_decay = 1.05
+    
+    csv_file = f'config_{memory_capacity}_{num_episodes}_{theta_start}_{theta_end}.csv'
+    # Create a Pandas DataFrame from the lists
+    df1 = pd.DataFrame(reward_evolution, columns=['episode_R', 'Reward Evolution'])
+    df2 = pd.DataFrame(exploration_rate_evolution, columns=['episode_E', 'Exploration Evolution'])
+    # Save the DataFrames to a CSV file
+    df1.to_csv('../results/reward_'+csv_file, index=False)
+    df2.to_csv('../results/explo_'+csv_file, index=False)
+    
+    print(f'Data saved to {csv_file}')
+
+

@@ -1,6 +1,10 @@
 #%%
+import csv
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+import seaborn as sns
+
 
 # From a list of tuple 2D plot a simple graph
 def linear_graph(tuples_list, x_label, y_label, title):
@@ -50,3 +54,45 @@ def moving_average(tuples_list, x_axis_name='Time', y_axsis_name='Reward', title
     plt.grid(True)
     plt.title(title)
     plt.show()
+    
+def tuple_list_from_csv(filename):
+    """plot moving average and std of a pandas dataframe
+    Args:
+        filename (_type_): _description_
+    """
+    
+    df = pd.read_csv(filename)
+    
+    f_name = df.columns[0]
+    s_name = df.columns[1]
+    
+    # Set the window size for the moving average and std calculation
+    window_size = 10  # You can adjust this value
+
+    # Calculate the moving average using Pandas rolling function
+    df['MovingAverage'] = df[s_name].rolling(window=window_size).mean()
+
+    # Calculate the standard deviation using Pandas rolling function
+    df['StdDeviation'] = df[s_name].rolling(window=window_size).std()
+
+    # Create a plot using Seaborn and Matplotlib
+    plt.figure()
+    sns.lineplot(x=f_name, y=s_name, data=df, label=s_name, color='blue')
+    sns.lineplot(x=f_name, y='MovingAverage', data=df, label='Moving Average', color='green')
+
+    # Fill the area between MovingAverage - StdDeviation and MovingAverage + StdDeviation with a shaded region
+    plt.fill_between(df[f_name], df['MovingAverage'] - df['StdDeviation'], df['MovingAverage'] + df['StdDeviation'], alpha=0.2, color='green', label='Std Deviation')
+
+    # Customize the plot
+    plt.xlabel(f_name)
+    plt.ylabel(s_name)
+    plt.title(f'Moving Average and Standard Deviation of {s_name}')
+    plt.legend()
+
+    # Show the plot
+    plt.grid(True)
+    plt.show()
+    # Show the plot
+    plt.show()
+
+    

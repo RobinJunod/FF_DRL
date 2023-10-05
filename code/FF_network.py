@@ -84,7 +84,7 @@ class Net(torch.nn.Module):
             print('training layer', i, '...')
             h_pos, h_neg = layer.train(h_pos, h_neg, num_epochs)
             
-    def predict(self, x, Display=True):
+    def predict(self, x, Display=False):
         """Return the goodness of a given input
         Args:
             x (matrix float): Input data, can be either a vector (single sample) or a matrix (multiple samples)
