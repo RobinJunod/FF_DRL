@@ -86,7 +86,7 @@ def tuple_list_from_csv(filename):
     # Customize the plot
     plt.xlabel('Episode')
     plt.ylabel(s_name)
-    plt.title(f'Moving Average and Standard Deviation of {s_name}')
+    plt.title(f'{s_name}')
     plt.legend()
 
     # Show the plot
@@ -96,3 +96,5 @@ def tuple_list_from_csv(filename):
     plt.show()
 
     
+
+# %%

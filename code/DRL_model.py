@@ -14,11 +14,22 @@ from gym import wrappers
 from FF_network import Net
 from plotting_tools import moving_average, linear_graph
 
-# TODO : create a metric to have the epsilon greedy rate
-
-def FakeDataGenerator():
+# TODO : create 2 fake data generators
+def FDGenerator_switch(real_data_tensor):
+    """Schuffle the data to create fake data
+    Args:
+        real_data_tensor (2d torch tensor): the "xpos", a 2d pytorch tensor (multiples state action pairs) 
+    Returns:
+        2d torch tensor : the "xpos", a 2d pytorch tensor (multiples state action pairs) 
+    """
     # TODO: create 2 types of negative data generators
-    pass
+    
+    return fake_state_action_list
+
+def FDGenerator_GGM(real_state_action_list):
+    # TODO: create 2 types of negative data generators
+    
+    return fake_state_action_list
 
 def DRL_train_network(env, ff_net, **kwargs):
     # Get the hyperparameters
@@ -96,41 +107,31 @@ def DRL_train_network(env, ff_net, **kwargs):
         replay_memory_positive_list.append(episode_memory[:-int(theta)])
         replay_memory_positive_list = sorted(replay_memory_positive_list, key=len, reverse=True)
         replay_memory_positive = [item for sublist in replay_memory_positive_list for item in sublist]
-        if len(replay_memory_positive_list) > 100:
+        if len(replay_memory_positive) > memory_capacity:
             replay_memory_positive_list.pop()
     
         replay_memory_negative_list.append(episode_memory[-int(theta):])
         replay_memory_negative = [item for sublist in replay_memory_negative_list for item in sublist]
-        if len(replay_memory_negative_list) > 200:
-            replay_memory_negative_list.pop()
-            
-        # Clear the replay memory of 1 run
-        if len(replay_memory_positive) > memory_capacity:
-            # Simple memory inside an array
-            for _ in range(len(replay_memory_positive)-memory_capacity):
-                # pop the last item of the list which should be the smallest run
-                replay_memory_positive.pop()
         if len(replay_memory_negative) > memory_capacity:
-            # Simple memory inside an array
-            for _ in range(len(replay_memory_negative)-memory_capacity):
-                # pop the last item of the list which should be the smallest run
-                replay_memory_negative.pop()
-                
+            replay_memory_negative_list.pop()
+        
+        
         episode_memory.clear() # clear the memory of the past episode
         
-
-        # Selecting k random sample in pos/neg memory data
-        neg_selection = random.choices(replay_memory_negative, k=256)
-        # x_pos and x_neg must be tensor
-        x_neg = torch.stack(neg_selection)
-        if replay_memory_positive: # early stage when no pos data
+                
+        
+        if replay_memory_positive and replay_memory_negative:
+            # Selecting k random sample in neg memory data
+            neg_selection = random.choices(replay_memory_negative, k=256)
+            # x_pos and x_neg must be tensor
+            x_neg = torch.stack(neg_selection)
+            
+            # Selecting k random sample in pos memory data
             pos_selection = random.choices(replay_memory_positive, k=256)
             # x_pos and x_neg must be tensor
             x_pos = torch.stack(pos_selection)
-        else:
-            # Handle the case when replay_memory_positive is empty
-            pos_selection = []        
-        
+
+        print(x_pos, 'XPOS can be seen here')
         
         # Train the net if their is enough data
         if pos_selection and neg_selection:
@@ -142,7 +143,7 @@ def DRL_train_network(env, ff_net, **kwargs):
         
         # Log graph and plot outputs
         print(f"Episode {episode + 1}, Total Reward: {total_reward}")
-        print(f'length of repNeglist: {len(replay_memory_negative_list)} length of repNeg: {len(replay_memory_negative)} length of reppos: {len(replay_memory_positive)}')
+        # print(f'length of repNeglist: {len(replay_memory_negative_list)} length of repNeg: {len(replay_memory_negative)} length of reppos: {len(replay_memory_positive)}')
         
         # Reward evolution
         reward_evolution.append((episode, total_reward))
@@ -190,18 +191,13 @@ if __name__ == '__main__':
     # Forward Forward algo 
     env = gym.make("CartPole-v1")
     input_size = env.observation_space.shape[0] + 1
-    print(f'input size : {input_size}')
+    
     # Create the forward forward network
     ff_net =  Net([input_size, 50, 20, 20])
     ff_net_trained, logs = DRL_train_network(env, ff_net, **arguments)
     
-    # plot the logs
+    # Plot the logs
     reward_evolution, exploration_rate_evolution = logs
-
-    # Plot the evolution
-    # linear_graph(reward_evolution, 'Episode', 'Reward', 'Evolution of the Reward')
-    # moving_average(reward_evolution,x_axis_name='Episode',y_axsis_name='Reward', title='Adaptative negative data',window_size=5)
-    
     
     # Saving the experiment
     csv_file = f'config_{args.memory_capacity}_{args.num_episodes}_{args.theta_start}_{args.theta_end}.csv'
