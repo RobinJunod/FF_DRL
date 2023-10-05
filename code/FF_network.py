@@ -1,36 +1,9 @@
 #%%
 import numpy as np
+import pandas as pd
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import pandas as pd
-
-# import the dataset
-def dataset_import():
-    # Load the CSV file into a DataFrame
-    df = pd.read_csv('../SmallDataset.csv')
-    X = df.iloc[:, :-1].values
-    Y = df.iloc[:, -1].values
-    return X, Y
-
-# add the label to the input data 
-# input -> numpy arrays of the data and the labels
-def one_hot_augmentation(x, y):
-    # x for data, y for labels
-    unique_values = np.unique(y)
-    one_hot_matrix = np.zeros((len(y), len(unique_values)), dtype=int)
-
-    for i, label in enumerate(y):
-        one_hot_matrix[i, label] = 1
-    
-    x_pos = np.hstack((x, one_hot_matrix))
-    return x_pos
-
-# Create negative data 
-def neg_data_creation(x_pos):
-    x_neg  = x_pos[:, [0, 1, 2, 4, 3]]
-    return x_neg
-
 
 # layer of the foward foward network
 class Layer(nn.Linear):
@@ -38,10 +11,8 @@ class Layer(nn.Linear):
                  bias=True, device=None, dtype=None):
         super().__init__(in_features, out_features, bias, device, dtype)
         self.relu = torch.nn.ReLU()
-        #self.opt = torch.optim.SGD(self.parameters(), lr=0.03, momentum=0.9)
         self.opt = torch.optim.Adam(self.parameters(), lr=0.03)
         self.threshold = 3.0
-        self.num_epochs = 500
     
     def forward(self, x):
         """Forward function that takes a set of points (matrix) as input
@@ -76,17 +47,14 @@ class Layer(nn.Linear):
             forwarded_x = self.forward(X)
         return goodness, forwarded_x
     
-    def train(self, x_pos, x_neg):
-        for i in range(self.num_epochs):
+    def train(self, x_pos, x_neg, num_epochs):
+        for i in range(num_epochs):
             g_pos = self.forward(x_pos).pow(2).mean(1)
             g_neg = self.forward(x_neg).pow(2).mean(1)
             # The following loss pushes pos (neg) samples to
             # values larger (smaller) than the self.threshold.
             positive_loss = F.softplus(-g_pos + self.threshold).mean()
             negative_loss = F.softplus(g_neg - self.threshold).mean()
-            #loss = torch.log(1 + torch.exp(torch.cat([
-            #    -g_pos + self.threshold,
-            #    g_neg - self.threshold]))).mean()
             loss = positive_loss + negative_loss
             self.opt.zero_grad()
             # compute the gradient make a step for only one layer
@@ -104,13 +72,18 @@ class Net(torch.nn.Module):
         for d in range(len(dims) - 1):
             self.layers += [Layer(dims[d], dims[d + 1])]
             
-    def train(self, x_pos, x_neg):
+    def train(self, x_pos, x_neg, num_epochs):
+        """ Train network with forward-forward one layer at a time
+        Args:
+            x_pos (matrix of datapoints): positive data
+            x_neg (matrix of datapoints): negative data
+            num_epochs (int): number of epochs
+        """
         h_pos, h_neg = x_pos, x_neg
         for i, layer in enumerate(self.layers):
             print('training layer', i, '...')
-            h_pos, h_neg = layer.train(h_pos, h_neg)
+            h_pos, h_neg = layer.train(h_pos, h_neg, num_epochs)
             
-
     def predict(self, x, Display=True):
         """Return the goodness of a given input
         Args:
@@ -134,9 +107,31 @@ class Net(torch.nn.Module):
                 g_tot += g_layer
                 
         return g_tot
-        
-        #TODO: Create a final layer for classification or regression that will take as input all the previous layer
-        
+                
+
+# import the dataset
+def dataset_import():
+    # Load the CSV file into a DataFrame
+    df = pd.read_csv('../SmallDataset.csv')
+    X = df.iloc[:, :-1].values
+    Y = df.iloc[:, -1].values
+    return X, Y
+# input -> numpy arrays of the data and the labels
+def one_hot_augmentation(x, y):
+    # x for data, y for labels
+    unique_values = np.unique(y)
+    one_hot_matrix = np.zeros((len(y), len(unique_values)), dtype=int)
+
+    for i, label in enumerate(y):
+        one_hot_matrix[i, label] = 1
+    
+    x_pos = np.hstack((x, one_hot_matrix))
+    return x_pos
+# Create negative data 
+def neg_data_creation(x_pos):
+    x_neg  = x_pos[:, [0, 1, 2, 4, 3]]
+    return x_neg
+
 
 if __name__=='__main__':
     # custom dataset into np array

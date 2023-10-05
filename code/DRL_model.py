@@ -1,46 +1,39 @@
+# TODO : make an automatic experiments system to tune hyperparameters
+# TODO : create a negative data generator 
+#           1/ by playing random and switching the dimensionality between steps
+#           2/ by playing randomfitting a gaussian model and generating points (neg points)
+# TODO : improving the plotting, to also have the variance plot
 #%%
+import argparse
+
+import torch
+import random
 import gym
 from gym import wrappers
 
-import numpy as np
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import torch.nn.functional as F
+from FF_network import Net
+from plotting_tools import moving_average, linear_graph
 
-import random
-import matplotlib.pyplot as plt
+# TODO : create a metric to have the epsilon greedy rate
 
-from plotting_tools import moving_average
+def FakeDataGenerator():
+    # TODO: create 2 types of negative data generators
+    pass
 
-# plotting a graph of multiples tuples as points
-def plot_tuples(tuples_list, x_label, y_label, title):
-    # Extract x and y values from the list of tuples
-    x_values, y_values = zip(*tuples_list)
-    # Create a line plot
-    plt.plot(x_values, y_values, marker='o', linestyle='-')
-    # Add labels and a title
-    plt.xlabel(x_label)
-    plt.ylabel(y_label)
-    plt.title(title)
-    # Show the plot
-    plt.show()
-
-
-def DRL_train_network(env, ff_net, num_episodes=400):
-    # Hyperparameters
-    epsilon_start = 1.0
-    epsilon_end = 0.01
-    epsilon_decay = 0.997
-    
-    theta_start = 5
-    theta_end = 25
-    theta_decay = 1.05
-    
-    
-    memory_capacity = 10000
-
-    
+def DRL_train_network(
+                    env, 
+                    ff_net,
+                    memory_capacity = 10000,
+                    num_episodes=400,
+                    num_epochs = 100,
+                    epsilon_start = 1.0,
+                    epsilon_end = 0.01,
+                    epsilon_decay = 0.997,
+                    theta_start = 5,
+                    theta_end = 25,
+                    theta_decay = 1.05,
+                    ):
+            
     # Initialize epsilon for epsilon-greedy exploration
     epsilon = epsilon_start
     # Initialize theta for negative data creation
@@ -146,7 +139,7 @@ def DRL_train_network(env, ff_net, num_episodes=400):
             print('--------------start the training-----------------')
             print('replay pos mem list :',[len(inner_list) for inner_list in replay_memory_positive_list])
             #print('replay neg mem list :',[len(inner_list) for inner_list in replay_memory_negative_list])
-            ff_net.train(x_pos,x_neg, num_epochs=100)
+            ff_net.train(x_pos,x_neg, num_epochs=num_epochs)
        
         
         # Log graph and plot outputs
@@ -168,133 +161,40 @@ def DRL_train_network(env, ff_net, num_episodes=400):
     
     return ff_net, logs
 
-
-
-
-class Layer(nn.Linear):
-    def __init__(self, in_features, out_features,
-                 bias=True, device=None, dtype=None):
-        super().__init__(in_features, out_features, bias, device, dtype)
-        self.relu = torch.nn.ReLU()
-        self.opt = optim.Adam(self.parameters(), lr=0.01)
-        # TODO : add L2 regularization
-        #self.opt = torch.optim.Adam(self.parameters(), lr=0.03, weight_decay=5e-5)
-        self.threshold = 3.0
-    
-    def forward(self, x):
-        """Forward function that takes a set of points (matrix) as input
-        """
-        x_direction = x / (x.norm(2, 1, keepdim=True) + 1e-4)
-        return self.relu(
-            torch.mm(x_direction, self.weight.T) +
-            self.bias.unsqueeze(0))
-    def goodness(self, X):
-        """ Compute the goodness for multiples samples sotre in a tensor matrix
-        """
-        with torch.no_grad():
-            goodness = self.forward(X).pow(2).mean(1) - self.threshold
-            forwarded_x = self.forward(X)
-        return goodness, forwarded_x
-    
-    def forward_onesample(self, x):
-        """Same as the forward fucntion but takes a vector for x and not a matrix
-        """
-        x_norm = x.norm(2)
-        x_direction = x / (x_norm + 1e-4)
-        linear_result = torch.matmul(self.weight, x_direction) + self.bias
-        output = torch.relu(linear_result)
-        return output
-    def goodness_onesample(self, x):
-        """ Compute the goodness for one sample
-        """
-        with torch.no_grad():
-            goodness = self.forward_onesample(x).pow(2).mean() - self.threshold
-            forwarded_x = self.forward_onesample(x)
-        return goodness, forwarded_x
-    
-    def train(self, x_pos, x_neg, num_epochs=500):
-        for i in range(num_epochs):
-            g_pos = self.forward(x_pos).pow(2).mean(1) # g_pos: vector (size forward(s-a)) 
-            g_neg = self.forward(x_neg).pow(2).mean(1)
-            #TODO: explain and comprenand the loss function, Try some other types of loss function
-            #TODO: maybe the loss function is nan because of that 
-            #positive_loss = torch.log(1 + torch.exp(-g_pos + self.threshold)).mean()
-            #negative_loss = torch.log(1 + torch.exp(g_neg - self.threshold)).mean()
-            # new loss function
-            positive_loss = F.softplus(-g_pos + self.threshold).mean()
-            negative_loss = F.softplus(g_neg - self.threshold).mean()
-            
-            #loss = torch.log(1 + torch.exp(torch.cat([
-            #    -g_pos + self.threshold,
-            #    g_neg - self.threshold]))).mean()
-            loss = positive_loss + negative_loss
-            # loss = g_neg.mean() - g_pos.mean()
-            self.opt.zero_grad()
-            # compute the gradient make a step for only one layer
-            loss.backward()
-            self.opt.step()
-        return self.forward(x_pos).detach(), self.forward(x_neg).detach()
-        
-    
-
-
-# Creation of the network with multiples layers
-class Net(torch.nn.Module):
-    def __init__(self, dims):
-        super().__init__()
-        self.layers = []
-        for d in range(len(dims) - 1):
-            self.layers += [Layer(dims[d], dims[d + 1])]
-            
-    def train(self, x_pos, x_neg, num_epochs):
-        h_pos, h_neg = x_pos, x_neg
-        for i, layer in enumerate(self.layers):
-            print('training layer', i, '...')
-            h_pos, h_neg = layer.train(h_pos, h_neg, num_epochs=num_epochs)
-
-    def predict(self, x, Display=False):
-        """Return the goodness of a given input
-        Args:
-            x (_type_): Input data, can be either a vector (single sample) or a matrix (multiple samples)
-            Display (bool, optional): To print stuff. Defaults to True.
-        Returns:
-            torch tensor float : return the total goodness
-        """
-        g_tot = 0
-        if len(x.shape) == 1: # Case of a vector
-            for i, layer in enumerate(self.layers):
-                g_layer, next_x = layer.goodness_onesample(x)
-                x = next_x
-                g_tot += g_layer
-            if Display : print('goodness total for sample : ', g_tot)
-                    
-        elif len(x.shape)==2:
-            for i, layer in enumerate(self.layers):
-                g_layer, next_x = layer.goodness(x)
-                x = next_x
-                g_tot += g_layer
-                
-        return g_tot
-
-
-
-
-
 #%%
 if __name__ == '__main__':
-
+    # __________PARSERS__________
+    parser = argparse.ArgumentParser(description="A simple command-line parser.")
+    # Add command-line arguments
+    parser.add_argument("--num_episodes", "-i", help="Input file path", required=False)
+    parser.add_argument("--num_epochs", "-o", help="Output file path", required=False)
+    parser.add_argument("--epsilon_start", "-v", help="Epsilon greedy start")
+    parser.add_argument("--epsilon_decay", "-v", help="Epsilon greedy decay value after each episode")
+    parser.add_argument("--epsilon_end", "-v", help="Epsilon greedy end")
+    
+    parser.add_argument("--theta_start", "-v", help="theta, the death horizon start")
+    parser.add_argument("--theta_decay", "-v", help="theta, the death horizon decay value after each episode")
+    parser.add_argument("--theta_end", "-v", help="theta, the death horizon end")
+    # Parse the command-line arguments
+    args = parser.parse_args()
+    
+    # Access the parsed arguments
+    input_file = args.input_file
+    output_file = args.output_file
+    verbose = args.verbose
+    
     # Forward Forward algo 
     env = gym.make("CartPole-v1")
     input_size = env.observation_space.shape[0] + 1
     print(f'input size : {input_size}')
     # Create the forward forward network
     ff_net =  Net([input_size, 50, 20, 20])
-    ff_net_trained, logs = DRL_train_network(env, ff_net, num_episodes=5000)
+    ff_net_trained, logs = DRL_train_network(env, ff_net, num_episodes=1000)
     
     # plot the logs
     reward_evolution, ep_length_evolution = logs
 
     # plot the reward evolution
-    plot_tuples(reward_evolution, 'Episode', 'Reward', 'Evolution of the Reward')
+    linear_graph(reward_evolution, 'Episode', 'Reward', 'Evolution of the Reward')
     moving_average(reward_evolution,x_axis_name='Episode',y_axsis_name='Reward', title='Adaptative negative data',window_size=100)
         
