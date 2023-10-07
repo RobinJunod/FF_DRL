@@ -7,6 +7,7 @@
 import argparse
 import random
 import pandas as pd
+import numpy as np
 import torch
 import gym
 from gym import wrappers
@@ -16,38 +17,70 @@ from plotting_tools import moving_average, linear_graph
 
 # TODO : create 2 fake data generators
 def FDGenerator_switch(real_data_tensor):
-    """Schuffle the data to create fake data
+    """Schuffle the data randomely to create fake data.
+    The data dimensio are kept , only the values are changing
     Args:
         real_data_tensor (2d torch tensor): the "xpos", a 2d pytorch tensor (multiples state action pairs) 
     Returns:
         2d torch tensor : the "xpos", a 2d pytorch tensor (multiples state action pairs) 
     """
-    # TODO: create 2 types of negative data generators
     
-    return fake_state_action_list
+    # Transpose the tensor
+    real_data_tensor_T_list = real_data_tensor.t().tolist()
+    # Shuffle the values in each inner list
+    for inner_list in real_data_tensor_T_list:
+        random.shuffle(inner_list)
+    
+    fake_data_tensor = torch.tensor(real_data_tensor_T_list).T
+
+    
+    # Create a mask to remove the data that are similar 
+    mask = torch.all(fake_data_tensor == real_data_tensor, dim=1)
+    
+    # Use the mask to remove rows from both tensors
+    real_data_tensor_filtered = real_data_tensor[~mask]
+    fake_data_tensor_filtered = fake_data_tensor[~mask]
+    
+    return real_data_tensor_filtered, fake_data_tensor_filtered
 
 def FDGenerator_GGM(real_state_action_list):
     # TODO: create 2 types of negative data generators
     
     return fake_state_action_list
 
-def DRL_train_network(env, ff_net, **kwargs):
-    # Get the hyperparameters
-    memory_capacity = kwargs.get("memory_capacity")
-    num_episodes = kwargs.get("num_episodes")
-    num_epochs = kwargs.get("num_epochs")
-    epsilon_start = kwargs.get("epsilon_start")
-    epsilon_end = kwargs.get("epsilon_end")
-    epsilon_decay = kwargs.get("epsilon_decay")
-    theta_start = kwargs.get("theta_start")
-    theta_end = kwargs.get("theta_end")
-    theta_decay = kwargs.get("theta_decay")
+def DRL_train_network(env, ff_net, cell=False, **kwargs):
+    if cell:
+        memory_capacity =10000
+        num_episodes=200
+        num_epochs=50
+        epsilon_start=1
+        epsilon_decay=0.995
+        epsilon_end=0.1
+        theta_start=5
+        theta_decay=1.05
+        theta_end=25
+    else:
+        # Get the hyperparameters
+        memory_capacity = kwargs.get("memory_capacity")
+        num_episodes = kwargs.get("num_episodes")
+        num_epochs = kwargs.get("num_epochs")
+        epsilon_start = kwargs.get("epsilon_start")
+        epsilon_end = kwargs.get("epsilon_end")
+        epsilon_decay = kwargs.get("epsilon_decay")
+        theta_start = kwargs.get("theta_start")
+        theta_end = kwargs.get("theta_end")
+        theta_decay = kwargs.get("theta_decay")
 
     
     # Initialize epsilon for epsilon-greedy exploration
     epsilon = epsilon_start
     # Initialize theta for negative data creation
     theta = theta_start
+    # automatic theta and epsilon decay 
+    theta_decay = np.exp(1/(0.6*num_episodes)*np.log(theta_end/theta_start))
+    epsilon_decay = np.exp(1/(0.6*num_episodes)*np.log(epsilon_end/epsilon_start))
+    
+    print('theta decay : ', theta_decay, ' ---- epsilon decay : ', epsilon_decay)
     # Initialize replay memory for good moves
     episode_memory = []
     # Initialize replay memory for good moves
@@ -100,10 +133,10 @@ def DRL_train_network(env, ff_net, **kwargs):
 
 
         # Epsilon and Theta decay
-        epsilon = max(epsilon_end, epsilon * epsilon_decay)
+        epsilon = min(epsilon_end, epsilon * epsilon_decay) if epsilon_decay > 1 else max(epsilon_end, epsilon * epsilon_decay) 
         theta = min(theta_end, theta * theta_decay) if theta_decay > 1 else max(theta_end, theta * theta_decay)
         
-        # sort the replay memory such that the good runs stays in it (for better estimation of pos and neg data)
+        # Sort the replay memory such that the good runs stays in it (for better estimation of pos and neg data)
         replay_memory_positive_list.append(episode_memory[:-int(theta)])
         replay_memory_positive_list = sorted(replay_memory_positive_list, key=len, reverse=True)
         replay_memory_positive = [item for sublist in replay_memory_positive_list for item in sublist]
@@ -125,18 +158,16 @@ def DRL_train_network(env, ff_net, **kwargs):
             neg_selection = random.choices(replay_memory_negative, k=256)
             # x_pos and x_neg must be tensor
             x_neg = torch.stack(neg_selection)
-            
             # Selecting k random sample in pos memory data
             pos_selection = random.choices(replay_memory_positive, k=256)
             # x_pos and x_neg must be tensor
             x_pos = torch.stack(pos_selection)
 
-        print(x_pos, 'XPOS can be seen here')
         
         # Train the net if their is enough data
         if pos_selection and neg_selection:
             print('--------------start the training-----------------')
-            print('replay pos mem list :',[len(inner_list) for inner_list in replay_memory_positive_list])
+            #print('replay pos mem list :',[len(inner_list) for inner_list in replay_memory_positive_list])
             #print('replay neg mem list :',[len(inner_list) for inner_list in replay_memory_negative_list])
             ff_net.train(x_pos,x_neg, num_epochs=num_epochs)
        
@@ -167,10 +198,10 @@ if __name__ == '__main__':
     parser.add_argument("--num_episodes", type=int, default=200, help="Input file path")
     parser.add_argument("--num_epochs", type=int, default=50, help="Output file path")
     parser.add_argument("--epsilon_start", type=int, default=1, help="Epsilon greedy start")
-    parser.add_argument("--epsilon_decay", type=int, default=0.995, help="Epsilon greedy decay value after each episode")
+    parser.add_argument("--epsilon_decay", type=float, default=0.995, help="Epsilon greedy decay value after each episode")
     parser.add_argument("--epsilon_end", type=int, default=0.1, help="Epsilon greedy end")
     parser.add_argument("--theta_start", type=int, default=5, help="theta, the death horizon start")
-    parser.add_argument("--theta_decay", type=int, default=1.05, help="theta, the death horizon decay value after each episode")
+    parser.add_argument("--theta_decay", type=float, default=1.05, help="theta, the death horizon decay value after each episode")
     parser.add_argument("--theta_end", type=int, default=25, help="theta, the death horizon end")
     # Parse the command-line arguments
     args = parser.parse_args()
@@ -211,3 +242,13 @@ if __name__ == '__main__':
     print(f'Data saved to {csv_file}')
 
 
+#%%
+import random
+import torch
+
+x_pos = torch.Tensor([[1,2,3],
+                      [3,4,5],
+                      [9,6,7]])
+l = [0, 1, 2, 3, 4]
+
+l_shuffled = random.sample(l, len(l))
