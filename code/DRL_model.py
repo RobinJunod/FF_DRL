@@ -45,7 +45,26 @@ def FDGenerator_switch(real_data_tensor):
 
 def FDGenerator_GGM(real_state_action_list):
     # TODO: create 2 types of negative data generators
-    
+    import torch
+    from sklearn.mixture import GaussianMixture
+    import numpy as np
+
+    # Generate or load your data as a PyTorch tensor
+    data_points = torch.randn(100, 2)  # Replace this with your actual data
+
+    # Convert the PyTorch tensor to a NumPy array
+    data_np = data_points.numpy()
+
+    # Fit a Gaussian Mixture Model with 'k' components
+    k = 3  # You can adjust the number of components as needed
+    gmm = GaussianMixture(n_components=k)
+    gmm.fit(data_np)
+
+    # Generate new data points from the fitted GMM
+    num_samples = 100  # Number of new data points to generate
+    generated_samples = gmm.sample(num_samples)
+    new_data = torch.tensor(generated_samples[0])  # Convert NumPy array back to a PyTorch tensor
+
     return fake_state_action_list
 
 def DRL_train_network(env, ff_net, cell=False, **kwargs):
