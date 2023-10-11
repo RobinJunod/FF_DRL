@@ -4,35 +4,9 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-#TODO: Try both implementation for FF learning, layerby layer or all layers
-#TODO : create a last layer in order to use FF algo for regression task
-class LastLayer(nn.Linear):
-    def __init__(self, in_features: int, out_features: int, bias: bool = True, device=None, dtype=None) -> None:
-        """For the implementation of th FF in DQL, The input are the output of 
-        every layers in the FF feature extractor. The output is the Q-value
-        Args:
-            in_features (int): input dimension
-            out_features (int): output dimension, Q-value (nb of possible actions)
-        """
-        super().__init__(in_features, out_features, bias, device, dtype)
-        self.relu = torch.nn.ReLU()
-        self.opt = torch.optim.Adam(self.parameters(), lr=0.03)
-        self.criterion = nn.MSELoss()
 
-    def forward(self, x):
-        """Forward function that takes a set of points (matrix) as input
-        """
-        x = torch.mm(x, self.weight.T) + self.bias.unsqueeze(0)
-        x = self.relu(x)
-        return x
-    
-    def train(self, output, target, num_epochs=100):
-        for i in range(num_epochs):
-            loss = self.criterion(output, target)
-            self.opt.zero_grad()
-            loss.backward()
-            self.opt.step()
-    
+
+
 # layer of the foward foward network
 class Layer(nn.Linear):
     def __init__(self, in_features, out_features,
@@ -149,10 +123,8 @@ def one_hot_augmentation(x, y):
     # x for data, y for labels
     unique_values = np.unique(y)
     one_hot_matrix = np.zeros((len(y), len(unique_values)), dtype=int)
-
     for i, label in enumerate(y):
         one_hot_matrix[i, label] = 1
-    
     x_pos = np.hstack((x, one_hot_matrix))
     return x_pos
 # Create negative data 

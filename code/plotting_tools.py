@@ -98,43 +98,13 @@ def tuple_list_from_csv(filename):
 
 # %%
 if __name__ == '__main__':
-    filename = '../results/reward_config_10000_10000_2_30.csv'
-    filename = '../results/reward_config_10000_3000_2_30.csv'
+    filename = '../results/bash_experiments/reward_config_10000_10000_2_30.csv'
+    filename = '../results/bash_experiments/reward_config_10000_3000_2_30.csv'
     
-    filename = '../results/explo_config_10000_20000_2_40.csv'
-    filename = '../results/explo_config_10000_2000_2_30.csv'
-    filename = '../results/reward_config_10000_3000_25_5.csv'
-    #filename = '../results/explo_config_10000_10000_2_30.csv'
+    filename = '../results/bash_experiments/explo_config_10000_20000_2_40.csv'
+    filename = '../results/bash_experiments/explo_config_10000_2000_2_30.csv'
+    filename = '../results/bash_experiments/reward_config_10000_3000_25_5.csv'
+    filename = '../results/bash_experiments/explo_config_10000_10000_2_30.csv'
     tuple_list_from_csv(filename)
-    
-#%%
-
-import torch
-import random
-
-# Create a sample 2D tensor
-tensor_2d = torch.tensor([[1, 2, 3],
-                          [4, 5, 6],
-                          [7, 8, 9]])
-
-# Get the dimensions of the tensor
-rows, cols = tensor_2d.size()
-
-# Create a list of indices for shuffling
-indices = list(range(rows))
-
-# Shuffle the indices randomly
-random.shuffle(indices)
-
-# Create a new vector by selecting values from the same dimension
-shuffled_vector = tensor_2d[indices, :]
-
-print("Original 2D Tensor:")
-print(tensor_2d)
-print("\nShuffled Vector:")
-print(shuffled_vector)
-
-
-
 
 

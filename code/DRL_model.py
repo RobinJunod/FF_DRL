@@ -1,7 +1,3 @@
-# TODO : make an automatic experiments system to tune hyperparameters
-# TODO : create a negative data generator 
-#           1/ by playing random and switching the dimensionality between steps
-#           2/ by playing randomfitting a gaussian model and generating points (neg points)
 # TODO : improving the plotting, to also have the variance plot
 #%%
 import argparse
