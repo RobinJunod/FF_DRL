@@ -15,57 +15,6 @@ from gym import wrappers
 from FF_network import Net
 from plotting_tools import moving_average, linear_graph
 
-# TODO : create 2 fake data generators
-def FDGenerator_switch(real_data_tensor):
-    """Schuffle the data randomely to create fake data.
-    The data dimensio are kept , only the values are changing
-    Args:
-        real_data_tensor (2d torch tensor): the "xpos", a 2d pytorch tensor (multiples state action pairs) 
-    Returns:
-        2d torch tensor : the "xpos", a 2d pytorch tensor (multiples state action pairs) 
-    """
-    
-    # Transpose the tensor
-    real_data_tensor_T_list = real_data_tensor.t().tolist()
-    # Shuffle the values in each inner list
-    for inner_list in real_data_tensor_T_list:
-        random.shuffle(inner_list)
-    
-    fake_data_tensor = torch.tensor(real_data_tensor_T_list).T
-
-    
-    # Create a mask to remove the data that are similar 
-    mask = torch.all(fake_data_tensor == real_data_tensor, dim=1)
-    
-    # Use the mask to remove rows from both tensors
-    real_data_tensor_filtered = real_data_tensor[~mask]
-    fake_data_tensor_filtered = fake_data_tensor[~mask]
-    
-    return real_data_tensor_filtered, fake_data_tensor_filtered
-
-def FDGenerator_GGM(real_state_action_list):
-    # TODO: create 2 types of negative data generators
-    import torch
-    from sklearn.mixture import GaussianMixture
-    import numpy as np
-
-    # Generate or load your data as a PyTorch tensor
-    data_points = torch.randn(100, 2)  # Replace this with your actual data
-
-    # Convert the PyTorch tensor to a NumPy array
-    data_np = data_points.numpy()
-
-    # Fit a Gaussian Mixture Model with 'k' components
-    k = 3  # You can adjust the number of components as needed
-    gmm = GaussianMixture(n_components=k)
-    gmm.fit(data_np)
-
-    # Generate new data points from the fitted GMM
-    num_samples = 100  # Number of new data points to generate
-    generated_samples = gmm.sample(num_samples)
-    new_data = torch.tensor(generated_samples[0])  # Convert NumPy array back to a PyTorch tensor
-
-    return fake_state_action_list
 
 def DRL_train_network(env, ff_net, cell=False, **kwargs):
     if cell:
