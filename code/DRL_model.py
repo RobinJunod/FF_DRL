@@ -204,19 +204,9 @@ if __name__ == '__main__':
     df1 = pd.DataFrame(reward_evolution, columns=['episode_R', 'Reward Evolution'])
     df2 = pd.DataFrame(exploration_rate_evolution, columns=['episode_E', 'Exploration Evolution'])
     # Save the DataFrames to a CSV file
-    df1.to_csv('../results/reward_'+csv_file, index=False)
-    df2.to_csv('../results/explo_'+csv_file, index=False)
+    df1.to_csv('../results/bash_experiments/reward_'+csv_file, index=False)
+    df2.to_csv('../results/bash_experiments/explo_'+csv_file, index=False)
     
     print(f'Data saved to {csv_file}')
 
 
-#%%
-import random
-import torch
-
-x_pos = torch.Tensor([[1,2,3],
-                      [3,4,5],
-                      [9,6,7]])
-l = [0, 1, 2, 3, 4]
-
-l_shuffled = random.sample(l, len(l))
