@@ -15,38 +15,6 @@ from gym import wrappers
 from FF_network import Net
 from plotting_tools import moving_average, linear_graph
 
-# TODO : create 2 fake data generators
-def FDGenerator_switch(real_data_tensor):
-    """Schuffle the data randomely to create fake data.
-    The data dimensio are kept , only the values are changing
-    Args:
-        real_data_tensor (2d torch tensor): the "xpos", a 2d pytorch tensor (multiples state action pairs) 
-    Returns:
-        2d torch tensor : the "xpos", a 2d pytorch tensor (multiples state action pairs) 
-    """
-    
-    # Transpose the tensor
-    real_data_tensor_T_list = real_data_tensor.t().tolist()
-    # Shuffle the values in each inner list
-    for inner_list in real_data_tensor_T_list:
-        random.shuffle(inner_list)
-    
-    fake_data_tensor = torch.tensor(real_data_tensor_T_list).T
-
-    
-    # Create a mask to remove the data that are similar 
-    mask = torch.all(fake_data_tensor == real_data_tensor, dim=1)
-    
-    # Use the mask to remove rows from both tensors
-    real_data_tensor_filtered = real_data_tensor[~mask]
-    fake_data_tensor_filtered = fake_data_tensor[~mask]
-    
-    return real_data_tensor_filtered, fake_data_tensor_filtered
-
-def FDGenerator_GGM(real_state_action_list):
-    # TODO: create 2 types of negative data generators
-    
-    return fake_state_action_list
 
 def DRL_train_network(env, ff_net, cell=False, **kwargs):
     if cell:
