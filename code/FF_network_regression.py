@@ -131,11 +131,14 @@ class Regression_Layer(nn.Linear):
     def forward(self, x):
         """Forward function that takes a set of points (matrix) as input
         """
-        x = torch.mm(x, self.weight.T) + self.bias.unsqueeze(0)
-        x = self.relu(x)
-        return x
+        if x.dim() == 1:
+            y = self.relu(x @ self.weight.T + self.bias)
+        elif x.dim() == 2:
+            y = self.relu(x @ self.weight.T + self.bias.unsqueeze(0))
+            
+        return y
     
-    def train(self, feature_extractor, input, target, num_epochs=400):
+    def train(self, feature_extractor, input, target, num_epochs=100):
         """Train the regression layer by using the feature extractor
         Args:
             feature_extractor (Net_Feature_Extraction): FF neural net for feature extraction
@@ -144,8 +147,9 @@ class Regression_Layer(nn.Linear):
             num_epochs (int, optional): _description_. Defaults to 100.
         """
         with torch.no_grad():
-            # features is a torch vector with the data of all
+            # features is a torch vector with the data of all layers
             features = feature_extractor.inference(input)
+        
         
         for _ in range(num_epochs):
             self.opt.zero_grad()
@@ -198,11 +202,11 @@ if __name__=='__main__':
     
     input = torch.cat((x_pos, x_neg), dim=0)
     size_vec = len(x_pos.T[4])
-    target = torch.cat((100*torch.ones(size_vec), -100*torch.ones(size_vec)), dim=0)
+    target = torch.cat((100*torch.ones(size_vec), 1*torch.ones(size_vec)), dim=0)
     #%% Create the network to extract
     size_feature = len(feature_extractor.inference(input)[0])
     regression_layer = Regression_Layer(size_feature,1)
-    regression_layer.train(feature_extractor, x_neg, target)
+    regression_layer.train(feature_extractor, input, target)
     
     regression_layer.predict(feature_extractor, x_pos)
     
