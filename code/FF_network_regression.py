@@ -97,11 +97,13 @@ class Feature_extractor(torch.nn.Module):
             g_tot += g_layer
         return g_tot
     
-    def inference(self, input):
+    def inference(self, input, n_layer=0):
         """Return the "y" value (value after relu and matrix mul) 
         of all the layers
         Args:
             input (torch tensor): the input data (states)
+            start_layer (int) : the layer number from which we want to 
+                                take features, all the firsts layer are ignored
         Returns:
             torch matrix : for each datapoint return the values at each layer
         """
@@ -111,7 +113,8 @@ class Feature_extractor(torch.nn.Module):
             for i, layer in enumerate(self.layers):
                 x_next= layer.forward(x)
                 x = x_next
-                features = torch.cat((features, x_next), dim=1)
+                if i >= n_layer:
+                    features = torch.cat((features, x_next), dim=1)
         return features
 
 
@@ -152,9 +155,9 @@ class Regression_Layer(nn.Linear):
             # features is a torch vector with the data of all layers
             features = feature_extractor.inference(input)
 
-        for _ in range(num_epochs):
+        for _ in range(num_epochs): 
             self.opt.zero_grad()
-            output = self.forward(features)
+            output = self.forward(features).view(-1)
             loss = self.criterion(output, target)
             loss.backward()
             self.opt.step()
@@ -163,7 +166,7 @@ class Regression_Layer(nn.Linear):
         with torch.no_grad():
             # features is a torch vector with the data of all
             features = feature_extractor.inference(input)
-            return self.forward(features)        
+            return self.forward(features).view(-1)   
 
 # import the dataset
 def dataset_import():
@@ -198,20 +201,29 @@ if __name__=='__main__':
     x_neg = torch.tensor(x_neg).float()
     
     # Create the network to extract features
-    feature_extractor = Feature_extractor([5, 10, 10])
+    feature_extractor = Feature_extractor([5, 10, 10, 10, 10])
     feature_extractor.train(x_pos, x_neg, num_epochs=100)
-    
+    #%% TRAINING LAST LAYER
+    # input is all the data we have
     input = torch.cat((x_pos, x_neg), dim=0)
     size_vec = len(x_pos.T[4])
     # WARNING : THE TARGET MUST BE A TENSOR 
-    target = torch.cat((x_pos.T[4], -torch.ones(size_vec)), dim=0).view(-1,1)
-    #%% Create the network to extract
+    # target is the real value of the class for real data (1 or 0) and -1 for neg data
+    target = torch.cat((x_pos.T[4], -torch.ones(size_vec)), dim=0)
+    # Create the network to extract
     size_feature = len(feature_extractor.inference(input)[0])
     regression_layer = Regression_Layer(size_feature,1)
     regression_layer.train(feature_extractor, input, target)
     
-    regression_layer.predict(feature_extractor, x_pos)
-    
+    #%% Show results of the trainig 
+    input_pred = regression_layer.predict(feature_extractor, input)
+    # Create a range of indices for the x-axis
+    x = np.arange(len(input_pred))
+    # Create a plot
+    import matplotlib.pyplot as plt
+    plt.plot(x, input_pred, marker='o', linestyle='-', color='red')
+    plt.plot(x, target, marker='o', linestyle='-', color='black')
+    plt.show
     # %% Test the network without a loop
     x_test = x_neg
     x_goodness = feature_extractor.goodness(x_test)
