@@ -132,10 +132,12 @@ class Regression_Layer(nn.Linear):
         """Forward function that takes a set of points (matrix) as input
         """
         if x.dim() == 1:
-            y = self.relu(x @ self.weight.T + self.bias)
+            x_direction = x / (x.norm(2) + 1e-4)
+            y = x_direction @ self.weight.T + self.bias
         elif x.dim() == 2:
-            y = self.relu(x @ self.weight.T + self.bias.unsqueeze(0))
-            
+            x_direction = x / (x.norm(2, 1, keepdim=True) + 1e-4)
+            y = x_direction @ self.weight.T + self.bias.unsqueeze(0)
+        
         return y
     
     def train(self, feature_extractor, input, target, num_epochs=100):
@@ -149,8 +151,7 @@ class Regression_Layer(nn.Linear):
         with torch.no_grad():
             # features is a torch vector with the data of all layers
             features = feature_extractor.inference(input)
-        
-        
+
         for _ in range(num_epochs):
             self.opt.zero_grad()
             output = self.forward(features)
@@ -202,7 +203,8 @@ if __name__=='__main__':
     
     input = torch.cat((x_pos, x_neg), dim=0)
     size_vec = len(x_pos.T[4])
-    target = torch.cat((100*torch.ones(size_vec), 1*torch.ones(size_vec)), dim=0)
+    # WARNING : THE TARGET MUST BE A TENSOR 
+    target = torch.cat((x_pos.T[4], -torch.ones(size_vec)), dim=0).view(-1,1)
     #%% Create the network to extract
     size_feature = len(feature_extractor.inference(input)[0])
     regression_layer = Regression_Layer(size_feature,1)
