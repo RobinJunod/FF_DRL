@@ -76,11 +76,11 @@ def tuple_list_from_csv(filename):
 
     # Create a plot using Seaborn and Matplotlib
     plt.figure()
-    sns.scatterplot(x=f_name, y=s_name, data=df, label='Raw Data', color='blue',alpha=0.3)
+    sns.scatterplot(x=f_name, y=s_name, data=df, label='Raw Data', color='blue',alpha=0.1)
     sns.lineplot(x=f_name, y='MovingAverage', data=df, label='Moving Average', color='red')
 
     # Fill the area between MovingAverage - StdDeviation and MovingAverage + StdDeviation with a shaded region
-    plt.fill_between(df[f_name], df['MovingAverage'] - df['StdDeviation'], df['MovingAverage'] + df['StdDeviation'], alpha=0.2, color='green', label='Std Deviation')
+    plt.fill_between(df[f_name], df['MovingAverage'] - df['StdDeviation'], df['MovingAverage'] + df['StdDeviation'], alpha=0.4, color='green', label='Std Deviation')
 
     # Customize the plot
     plt.xlabel('Episode')
@@ -95,7 +95,57 @@ def tuple_list_from_csv(filename):
     plt.show()
 
     
+def compare_with_random(filename, filename2):
+    """plot moving average and std of a pandas dataframe
+    Args:
+        filename (_type_): _description_
+    """
+    
+    df = pd.read_csv(filename)
+    df2 = pd.read_csv(filename2)
+    f_name = df.columns[0]
+    s_name = df.columns[1]
+    f_name2 = df2.columns[0]
+    s_name2 = df2.columns[1]
+    
+    # Set the window size for the moving average and std calculation
+    window_size = 200  # You can adjust this value
 
+    # Calculate the moving average using Pandas rolling function
+    df['MovingAverage'] = df[s_name].rolling(window=window_size, center=True).mean()
+
+    # Calculate the standard deviation using Pandas rolling function
+    df['StdDeviation'] = df[s_name].rolling(window=window_size,center=True).std()
+
+    
+    # Calculate the moving average using Pandas rolling function
+    df2['MovingAverage'] = df2[s_name2].rolling(window=window_size, center=True).mean()
+
+    # Calculate the standard deviation using Pandas rolling function
+    df2['StdDeviation'] = df2[s_name2].rolling(window=window_size,center=True).std()
+    
+    print(df2)
+    # Create a plot using Seaborn and Matplotlib
+    plt.figure()
+    sns.lineplot(x=f_name, y='MovingAverage', data=df, label='Moving Average Model', color='red')
+    # Fill the area between MovingAverage - StdDeviation and MovingAverage + StdDeviation with a shaded region
+    plt.fill_between(df[f_name], df['MovingAverage'] - df['StdDeviation'], df['MovingAverage'] + df['StdDeviation'], alpha=0.4, color='green', label='Std Deviation Model')
+
+    sns.lineplot(x=f_name2, y='MovingAverage', data=df2, label='Moving Average Random', color='black')
+    # Fill the area between MovingAverage - StdDeviation and MovingAverage + StdDeviation with a shaded region
+    plt.fill_between(df2[f_name2], df2['MovingAverage'] - df2['StdDeviation'], df2['MovingAverage'] + df2['StdDeviation'], alpha=0.4, color='blue', label='Std Deviation Random')
+    # Customize the plot
+    plt.xlabel('Episode')
+    plt.ylabel(s_name)
+    plt.title(f'{s_name}')
+    plt.legend()
+
+    # Show the plot
+    plt.grid(True)
+    plt.show()
+    # Show the plot
+    plt.show()
+    
 # %%
 if __name__ == '__main__':
     filename = '../results/bash_experiments/reward_config_10000_10000_2_30.csv'

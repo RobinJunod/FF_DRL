@@ -100,7 +100,7 @@ def FDGenerator_GGM(real_states, max_components_to_try=10):
     return real_states, fake_states, log_likelihoods
 
 
-def play_random(env):
+def play_random(env, num_episodes = 3000):
     """Play with random actions
     Args:
         env (_type_): the gym environment
@@ -109,7 +109,6 @@ def play_random(env):
                            a list of the rewards for random episodes
     """
     memory_capacity = 10000
-    num_episodes = 5000
     episode_memory = []
     rnd_action_rewards = []
     for episode in range(num_episodes):
