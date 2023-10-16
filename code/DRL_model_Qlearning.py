@@ -3,6 +3,7 @@
 # The feature extractor weights should then be fixed, and a trainable linear layer is added on top of it
 # The new model (extractor+linear layer) is trained as a standard DQN
 # Experience (i.e. positive data) is generated with the DQN and used to generate new negative data
+# Then the feature extractor is trained with these data
 # Repeat 1-4
 
 # Make the plot for 
@@ -16,7 +17,7 @@ from sklearn.mixture import GaussianMixture
 import gym
 from gym import wrappers
 
-from FF_network import Net
+from FF_network_regression import Feature_extractor, Regression_Layer
 
 from plotting_tools import moving_average, linear_graph
 
@@ -144,7 +145,136 @@ def play_random(env, num_episodes = 3000):
     return real_states, rnd_action_rewards
 
 
+def DQL(env, ff_network):
+    # Hyperparameters
+    gamma = 0.99
+    epsilon_start = 1.0
+    epsilon_end = 0.01
+    epsilon_decay = 0.99
+    memory_capacity = 10000
+    target_update_frequency = 20
+    
+    # Initialize Feature extractor
+    input_size = env.observation_space.shape[0]
+    feature_extractor = Feature_extractor([input_size, 20, 10, 10, 10])
+    # Initalize the postiive adn negative data
+    positive_data, _ = play_random(env)
+    negative_data = Fake_data_shuffle(positive_data)
+    feature_extractor.train(positive_data, negative_data, num_epochs=100)
+    
+    # Initialize Q one layer net
+    size_feature = len(feature_extractor.inference(positive_data)[0])
+    regression_Layer= Regression_Layer(size_feature, env.action_space.shape[0])
+    target_regression_Layer = Regression_Layer(size_feature, env.action_space.shape[0])
+    target_regression_Layer.load_state_dict(regression_Layer.state_dict())
+    target_regression_Layer.eval()
+    
 
+        
+
+    # Initialize epsilon for epsilon-greedy exploration
+    epsilon = epsilon_start
+    # Initialize replay memory
+    replay_memory = []
+    # Reward evolution 
+    reward_evolution = []
+
+
+    #% Training loop
+    num_episodes = 200
+    for episode in range(num_episodes):
+        state, info = env.reset()
+        state = torch.tensor(state, dtype=torch.float32)
+        done = False
+        total_reward = 0
+        episode_length = 0
+        while not done and episode_length < 2000:
+            episode_length += 1
+            # Epsilon-greedy exploration
+            if random.random() < epsilon:
+                action = env.action_space.sample()  # Random action
+            else:
+                with torch.no_grad():
+                    q_values = regression_Layer(feature_extractor.inference(state))
+                    action = torch.argmax(q_values).item()
+            # Take the selected action (New API)
+            next_state, reward, terminated, truncated, info = env.step(action)
+            # New API, the done flag can be detected wether the episode failed or succed
+            done = terminated or truncated
+
+            # put in a torch tensor
+            next_state = torch.tensor(next_state, dtype=torch.float32)
+
+            # Store the transition in replay memory
+            replay_memory.append((state, action, reward, next_state, done))
+            if len(replay_memory) > memory_capacity:
+                # Simple memory inside an array
+                replay_memory.pop(0)
+
+            # Sample a random batch from replay memory and perform Q-learning update
+            if len(replay_memory) >= batch_size:
+                batch = random.sample(replay_memory, batch_size)
+                states, actions, rewards, next_states, dones = zip(*batch)
+                # stack the informations buffer size tensor (for a better traing in backward prop)
+                states = torch.stack(states)
+                next_states = torch.stack(next_states)
+                rewards = torch.tensor(rewards, dtype=torch.float32)
+                actions = torch.tensor(actions, dtype=torch.long)
+                dones = torch.tensor(dones, dtype=torch.float32)
+                # use the network to estimate the next q values given the buffer of states
+                # take a bunch of data to stabilize the learning
+                q_values = q_network(states)
+                # The next q values are determined by the more stable network (off policy)
+                next_q_values = target_network(next_states).max(1).values
+                # The target q value is the computed as the sum of the reward and the futur best Q values
+                # for cartpole the reward is 1 at each step 
+                target_q_values = rewards + (1 - dones) * gamma * next_q_values
+                # takes the values of the action choosen by the epsilon greedy !! (so we have a q_value of dim 2 projecting to dim 1 (only retaining the best))
+                # It is a bit like taking the 'V-value' of the Q-value by selecting the best action
+                q_values = q_values.gather(1, actions.view(-1, 1))
+                
+                # compute the loss from the q values differences (the prediction and the target) (2-arrays of length 32 (batch-size))
+                loss = criterion(q_values, target_q_values.view(-1, 1))
+                # loss mean evolution (recursive mean)
+                loss_mean = ((episode_length-1)*loss_mean + loss.item())/episode_length
+                
+                # Optimization using basic pytorch code
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
+
+            # Update the target network
+            if episode % target_update_frequency == 0:
+                target_network.load_state_dict(q_network.state_dict())
+                target_network.eval()
+
+            total_reward += reward
+            state = next_state
+
+        # Epsilon decay
+        epsilon = max(epsilon_end, epsilon * epsilon_decay)
+
+        print(f"Episode {episode + 1}, Total Reward: {total_reward}")
+
+        # Reward evolution
+        reward_evolution.append((episode, total_reward))
+        # Episode length evolution
+        ep_length_evolution.append((episode, episode_length))
+        # Loss evolution
+        loss_evolution.append((episode, loss_mean))
+
+    # plot the reward evolution
+    plot_tuples(reward_evolution, 'Episode', 'Total Reward', 'Reward Evolution Over Episodes')
+    # plot the reward evolution
+    plot_tuples(ep_length_evolution, 'Episode', 'Episode Length', 'Evolution of the Episode Lengths')
+    # plot the reward evolution
+    plot_tuples(loss_evolution, 'Episode', 'Loss mean', 'Evolution of the Loss')
+
+
+    # Close the environment
+    env.close()
+    pass
 
 #%%
 if __name__ == '__main__':
@@ -154,7 +284,7 @@ if __name__ == '__main__':
     input_size = env.observation_space.shape[0] 
     
     # Create the forward forward network
-    ff_net =  Net([input_size, 50, 20, 20])
+    ff_net =  Feature_extractor([input_size, 20, 10, 10, 10, 10])
     
     # Generate real states
     real_states, rnd_action_rewards = play_random(env)
@@ -164,7 +294,7 @@ if __name__ == '__main__':
     #%% Create fake states
     real_data, fake_data, log_like = FDGenerator_GGM(real_states)
     
-    #%% Split train-test set
+    #%% TEST FAKE DATA GENERATOR
     train_realData_l = 0.8 * len(real_data)
     train_fakeData_l = 0.8 * len(fake_data)
     

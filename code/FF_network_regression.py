@@ -133,6 +133,7 @@ class Regression_Layer(nn.Linear):
 
     def forward(self, x):
         """Forward function that takes a set of points (matrix) as input
+        This forward takes the features as input and not the original data
         """
         if x.dim() == 1:
             x_direction = x / (x.norm(2) + 1e-4)
