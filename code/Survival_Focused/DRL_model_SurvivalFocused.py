@@ -9,7 +9,7 @@ import gym
 from gym import wrappers
 
 from FF_network import Net
-from plotting_tools import moving_average, linear_graph
+from ..plotting_tools import moving_average, linear_graph
 
 
 def DRL_train_network(env, ff_net, cell=False, **kwargs):
@@ -200,8 +200,8 @@ if __name__ == '__main__':
     df1 = pd.DataFrame(reward_evolution, columns=['episode_R', 'Reward Evolution'])
     df2 = pd.DataFrame(exploration_rate_evolution, columns=['episode_E', 'Exploration Evolution'])
     # Save the DataFrames to a CSV file
-    df1.to_csv('../results/bash_experiments/reward_'+csv_file, index=False)
-    df2.to_csv('../results/bash_experiments/explo_'+csv_file, index=False)
+    df1.to_csv('../../results/SF_experiments/reward_'+csv_file, index=False)
+    df2.to_csv('../../results/SF_experiments/explo_'+csv_file, index=False)
     
     print(f'Data saved to {csv_file}')
 

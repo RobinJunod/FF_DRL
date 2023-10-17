@@ -128,7 +128,7 @@ for episode in range(num_episodes):
             # for cartpole the reward is 1 at each step 
             target_q_values = rewards + (1 - dones) * gamma * next_q_values
             # takes the values of the action choosen by the epsilon greedy !! (so we have a q_value of dim 2 projecting to dim 1 (only retaining the best))
-            # It is a bit like taking the 'V-value' of the Q-value by selecting the best action
+            # It is a bit like taking the 'V-value' of the Q-value by selecting the action played)
             q_values = q_values.gather(1, actions.view(-1, 1))
             
             # compute the loss from the q values differences (the prediction and the target) (2-arrays of length 32 (batch-size))

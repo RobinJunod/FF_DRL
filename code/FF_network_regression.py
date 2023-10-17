@@ -144,7 +144,7 @@ class Regression_Layer(nn.Linear):
         
         return y
     
-    def train(self, feature_extractor, input, target, num_epochs=100):
+    def train_state_target(self, feature_extractor, input, target, num_epochs=100):
         """Train the regression layer by using the feature extractor
         Args:
             feature_extractor (Net_Feature_Extraction): FF neural net for feature extraction
@@ -214,7 +214,7 @@ if __name__=='__main__':
     # Create the network to extract
     size_feature = len(feature_extractor.inference(input)[0])
     regression_layer = Regression_Layer(size_feature,1)
-    regression_layer.train(feature_extractor, input, target)
+    regression_layer.train_state_target(feature_extractor, input, target)
     
     #%% Show results of the trainig 
     input_pred = regression_layer.predict(feature_extractor, input)
