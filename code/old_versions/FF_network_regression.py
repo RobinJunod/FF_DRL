@@ -172,7 +172,7 @@ class Regression_Layer(nn.Linear):
 # import the dataset
 def dataset_import():
     # Load the CSV file into a DataFrame
-    df = pd.read_csv('../SmallDataset.csv')
+    df = pd.read_csv('../../SmallDataset.csv')
     X = df.iloc[:, :-1].values
     Y = df.iloc[:, -1].values
     return X, Y

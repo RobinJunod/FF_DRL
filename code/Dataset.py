@@ -126,16 +126,22 @@ def dataset_GMM(n_samples= 1000, show_plot=True):
         # Show the plots
         plt.show()
     
-    return data_points
+    # Split train test dataset
+    test_size = 0.2  # Test rate
+    num_test_points = int(test_size * data_points.shape[0])
+    np.random.shuffle(data_points)
+    X_train = data_points[num_test_points:]
+    X_test = data_points[:num_test_points] 
+    return X_train, X_test
 
 
-def Fake_data_shuffle(real_data_tensor):
+def fake_data_shuffle(real_data_tensor):
     """Schuffle the data randomely to create fake data.
     The data dimensio are kept , only the values are changing
     Args:
         real_data_tensor (2d torch tensor): the "xpos", a 2d pytorch tensor (multiples state action pairs) 
     Returns:
-        2d torch tensor : the "xpos", a 2d pytorch tensor (multiples state action pairs) 
+        pos_data, neg_data (torch tensor): the positive and negative data in torch tensors
     """
     # Transpose the tensor
     real_data_tensor_T_list = real_data_tensor.t().tolist()
@@ -151,7 +157,7 @@ def Fake_data_shuffle(real_data_tensor):
     fake_data= fake_data_tensor[~mask]
     return real_data, fake_data
 
-def Fake_data_GGM(real_states, max_components_to_try=10):
+def fake_data_GGM(real_states, max_components_to_try=10):
     # TODO : this function is in creation
     """Fit a GMM to the real state data in order to create from thoses points some fake data points
 
@@ -210,7 +216,7 @@ if __name__ == '__main__':
     # generate nonlinearly correlated data (to be used as positive data in a simulated dataset)
     # visualize the nonlinear relation between inputs with a simulated dataset with just 2 features
     data_points = dataset_GMM(n_samples= 1000, show_plot=True)
-    # TODO : 3 - define a target as a nonlinear combination of the inputs
-
+    df =  pd.DataFrame(data_points, columns=['dim1', 'dim2', 'dim3', 'dim4'])
+    
 
 #%%
