@@ -18,6 +18,7 @@ from sklearn.mixture import GaussianMixture
 def dataset_GMM(n_samples= 1000, show_plot=True):
     """Samples data points from a predefined GM with 3 components and 4 dimensions 
     Plot the result dataset
+    returns : (np.array , np.array) : X_train and X_test, the train and test dataset
     """
     # Define the GMM parameters (mean, covariance, and weights) for each component
     means = np.array([

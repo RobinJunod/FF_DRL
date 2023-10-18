@@ -18,7 +18,7 @@ import torch.nn.functional as F
 import gym
 from gym import wrappers
 
-from FF_network_regression import Feature_extractor, Regression_Layer
+from old_versions.FF_network_regression import Feature_extractor, Regression_Layer
 from Dataset import Fake_data_shuffle, Fake_data_GGM
 from plotting_tools import moving_average, linear_graph, tuple_list_from_csv
 
@@ -213,7 +213,7 @@ if __name__ == '__main__':
     #%% Create fake states
     real_data, fake_data = Fake_data_shuffle(real_states)
     #%% Create fake states
-    real_data, fake_data, log_like = FDGenerator_GGM(real_states)
+    #real_data, fake_data, log_like = FDGenerator_GGM(real_states)
     
     #%% TEST FAKE DATA GENERATOR
     train_realData_l = 0.8 * len(real_data)
