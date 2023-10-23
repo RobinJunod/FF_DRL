@@ -36,7 +36,31 @@ def plot_tuples(tuples_list, x_label, y_label, title):
     # Show the plot
     plt.show()
 
-
+#
+def test_policy(env, q_network):
+    
+    state, info = env.reset()
+    state = torch.tensor(state, dtype=torch.float32)
+    done = False
+    t = 0
+    while not done and t < 500:
+        t += 1
+        
+        # take the policy of the state
+        q_values = q_network(state)
+        # take the best action given the q_values
+        action = torch.argmax(q_values).item()
+        #Take the selected action
+        next_state, reward, terminated, truncated, info = env.step(action)
+        done = terminated or truncated
+        next_state = torch.tensor(next_state, dtype=torch.float32)
+        #if done:
+        #   break
+        state = next_state
+        env.render()
+        
+    env.close()
+    return t
     
 
 # Hyperparameters
@@ -141,20 +165,18 @@ for episode in range(num_episodes):
             loss.backward()
             optimizer.step()
 
-
-        # Update the target network
-        if episode % target_update_frequency == 0:
-            target_network.load_state_dict(q_network.state_dict())
-            target_network.eval()
-
         total_reward += reward
         state = next_state
 
     # Epsilon decay
     epsilon = max(epsilon_end, epsilon * epsilon_decay)
-
+    # Update the target network
+    if episode % target_update_frequency == 0:
+        target_network.load_state_dict(q_network.state_dict())
+        target_network.eval()
+    
+    # Prints and log part
     print(f"Episode {episode + 1}, Total Reward: {total_reward}")
-
     # Reward evolution
     reward_evolution.append((episode, total_reward))
     # Episode length evolution
@@ -174,31 +196,7 @@ plot_tuples(loss_evolution, 'Episode', 'Loss mean', 'Evolution of the Loss')
 env.close()
 
 
-#%%
-def test_policy(env, q_network):
-    
-    state, info = env.reset()
-    state = torch.tensor(state, dtype=torch.float32)
-    done = False
-    t = 0
-    while not done and t < 500:
-        t += 1
-        
-        # take the policy of the state
-        q_values = q_network(state)
-        # take the best action given the q_values
-        action = torch.argmax(q_values).item()
-        #Take the selected action
-        next_state, reward, terminated, truncated, info = env.step(action)
-        done = terminated or truncated
-        next_state = torch.tensor(next_state, dtype=torch.float32)
-        #if done:
-        #   break
-        state = next_state
-        env.render()
-        
-    env.close()
-    return t
+
 
 
 #%%

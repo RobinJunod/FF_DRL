@@ -216,8 +216,8 @@ def fake_data_GGM(real_states, max_components_to_try=10):
 if __name__ == '__main__':
     # generate nonlinearly correlated data (to be used as positive data in a simulated dataset)
     # visualize the nonlinear relation between inputs with a simulated dataset with just 2 features
-    data_points = dataset_GMM(n_samples= 1000, show_plot=True)
-    df =  pd.DataFrame(data_points, columns=['dim1', 'dim2', 'dim3', 'dim4'])
+    X_train, X_test = dataset_GMM(n_samples= 1000, show_plot=True)
+    df_train =  pd.DataFrame(X_train, columns=['dim1', 'dim2', 'dim3', 'dim4'])
     
 
 #%%

@@ -108,7 +108,12 @@ class Feature_extractor(torch.nn.Module):
                 x_next= layer.forward(x)
                 x = x_next
                 if i >= n_layer:
-                    features = torch.cat((features, x_next), dim=1)
+                    if x.dim() == 1:
+                        # Inference for 1 data (1 state)
+                        features = torch.cat((features, x_next), dim=0)
+                    elif x.dim() == 2:
+                        # Inference for multiples data (list of states)
+                        features = torch.cat((features, x_next), dim=1)
         return features
 
 # Copy of the FF network for performence comparaison with backprop
@@ -153,7 +158,7 @@ if __name__=='__main__':
     positive_data = torch.tensor(X_train).float()
     positive_data, negative_data = fake_data_shuffle(positive_data)
     # Dimension of the FF networks layers
-    dims = [4, 10, 10]
+    dims = [4, 10, 5]
     # Create/train the FF net to extract features
     feature_extractor = Feature_extractor(dims)
     feature_extractor.train(positive_data, negative_data, num_epochs=400)
@@ -168,7 +173,9 @@ if __name__=='__main__':
     num_epochs = 1000
     for epoch in range(num_epochs):
         # Forward pass
+        print('pos data :', positive_data.shape)
         features = feature_extractor.inference(positive_data).float()
+        print('features :', features.shape)
         outputs = regression_layer(features).float()  # Reshape x to a 2D tensor
         # Compute the loss
         loss = criterion(outputs, Y_train.view(-1, 1))  # Reshape y to a 2D tensor

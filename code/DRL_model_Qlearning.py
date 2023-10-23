@@ -1,12 +1,10 @@
-# TODO : Then, to sum up:
-# You can use the positive and negative data you created to train a feature extractor
+
 # The feature extractor weights should then be fixed, and a trainable linear layer is added on top of it
 # The new model (extractor+linear layer) is trained as a standard DQN
 # Experience (i.e. positive data) is generated with the DQN and used to generate new negative data
 # Then the feature extractor is trained with these data
 # Repeat 1-4
 
-# Make the plot for 
 #%%
 import random
 import numpy as np
@@ -18,9 +16,9 @@ import torch.nn.functional as F
 import gym
 from gym import wrappers
 
-from old_versions.FF_network_regression import Feature_extractor, Regression_Layer
-from Dataset import Fake_data_shuffle, Fake_data_GGM
-from plotting_tools import moving_average, linear_graph, tuple_list_from_csv
+from FF_regression import Feature_extractor
+from Dataset import fake_data_shuffle
+from plotting_tools import  moving_average
 
 
 
@@ -70,37 +68,26 @@ def play_random(env, num_episodes = 3000):
     return real_states, rnd_action_rewards
 
 
-def DQL(env):
+def DQL(env, feature_extractor, feature_size, num_episodes=200, memory_capacity = 10000):
     # Hyperparameters
     gamma = 0.99
     epsilon_start = 1.0
     epsilon_end = 0.01
-    epsilon_decay = 0.99
+    epsilon_decay = 0.97
     
-    memory_capacity = 10000
     batch_size = 64
     target_update_frequency = 20
-    
-    # Initialize Feature extractor
-    input_size = env.observation_space.shape[0]
-    feature_extractor = Feature_extractor([input_size, 20, 10, 10, 10])
-    # Initalize the postiive adn negative data
-    positive_data, _ = play_random(env)
-    positive_data, negative_data = Fake_data_shuffle(positive_data)
-    feature_extractor.train(positive_data, negative_data, num_epochs=100)
-    
-    # Initialize Q one layer net
-    input_size_rl = len(feature_extractor.inference(positive_data)[0])
-    output_size_rl = env.action_space.n
-    
-    regression_layer= Regression_Layer(input_size_rl, output_size_rl)
-    target_regression_layer = Regression_Layer(input_size_rl, output_size_rl)
+
+    # Regression last layer (not OLS because RL)
+    regression_layer = nn.Linear(feature_size, env.action_space.n)
+    # Target init    
+    target_regression_layer = nn.Linear(feature_size, env.action_space.n)
     target_regression_layer.load_state_dict(regression_layer.state_dict())
     target_regression_layer.eval()
     
     # Define the loss function and optimizer
     criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(regression_layer.parameters(), lr=0.001)
+    optimizer = torch.optim.Adam(regression_layer.parameters(), lr=0.0005)
         
 
     # Initialize epsilon for epsilon-greedy exploration
@@ -109,16 +96,16 @@ def DQL(env):
     replay_memory = []
     # Reward evolution 
     reward_evolution = []
-
+    loss_evolution = []
 
     #% Training loop
-    num_episodes=50
     for episode in range(num_episodes):
         state, info = env.reset()
         state = torch.tensor(state, dtype=torch.float32)
         done = False
         total_reward = 0
         episode_length = 0
+        loss_mean_ep = 0
         while not done and episode_length < 2000:
             episode_length += 1
             # Epsilon-greedy exploration
@@ -126,16 +113,16 @@ def DQL(env):
                 action = env.action_space.sample()  # Random action
             else:
                 with torch.no_grad():
-                    features = feature_extractor.inference(state)
-                    q_values = regression_layer(features)
+                    state_features = feature_extractor.inference(state)
+                    q_values = regression_layer(state_features)
                     action = torch.argmax(q_values).item()
             # Take the selected action (New API)
             next_state, reward, terminated, truncated, info = env.step(action)
+            # put in a torch tensor
+            next_state = torch.tensor(next_state, dtype=torch.float32)
             # New API, the done flag can be detected wether the episode failed or succed
             done = terminated or truncated
 
-            # put in a torch tensor
-            next_state = torch.tensor(next_state, dtype=torch.float32)
 
             # Store the transition in replay memory
             replay_memory.append((state, action, reward, next_state, done))
@@ -164,56 +151,108 @@ def DQL(env):
                 # takes the values of the action choosen by the epsilon greedy !! (so we have a q_value of dim 2 projecting to dim 1 (only retaining the best))
                 # It is a bit like taking the 'V-value' of the Q-value by selecting the best action
                 q_values = q_values.gather(1, actions.view(-1, 1))
-
                 # compute the loss from the q values differences (the prediction and the target) (2-arrays of length 32 (batch-size))
                 loss = criterion(q_values, target_q_values.view(-1, 1))
                 # Optimization using basic pytorch code
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
-
-            # Update the target network
-            if episode % target_update_frequency == 0:
-                target_regression_layer.load_state_dict(regression_layer.state_dict())
-                target_regression_layer.eval()
-
+                # Add the loss evolution
+                loss_mean_ep += loss_mean_ep*(episode_length-1)/episode_length + loss.item()/episode_length
+                
             total_reward += reward
             state = next_state
-
+            
         # Epsilon decay
         epsilon = max(epsilon_end, epsilon * epsilon_decay)
-
-        print(f"Episode {episode + 1}, Total Reward: {total_reward}")
-
+        # Update the target network
+        if episode % target_update_frequency == 0:
+            target_regression_layer.load_state_dict(regression_layer.state_dict())
+            target_regression_layer.eval()
+            
+        # Print part
+        print(f"Episode {episode + 1}, Total Reward: {total_reward}") if episode%10 == 0 else None
         # Reward evolution
         reward_evolution.append((episode, total_reward))
-
+        loss_evolution.append((episode, loss_mean_ep))
+        
     # plot the reward evolution
-    tuple_list_from_csv(reward_evolution, 'Episode', 'Total Reward', 'Reward Evolution Over Episodes')
+    # moving_average(loss_evolution, x_axis_name='episode', y_axsis_name='loss', title='Moving average plot', window_size=20)
+    moving_average(reward_evolution, x_axis_name='episode', y_axsis_name='Reward', title='Reward Evolution', window_size=50)
 
-    # Close the environment
+  
+    # Thoses real states will be used to train the feature extractor
+    states, actions, rewards, next_states, dones = zip(*replay_memory)
+    real_states = torch.stack(states)
+    return real_states, regression_layer
+
+
+def test_policy(env, feature_extractor, regression_layer):
+    state, info = env.reset()
+    state = torch.tensor(state, dtype=torch.float32)
+    done = False
+    t = 0
+    while not done and t < 500:
+        t += 1
+        
+        with torch.no_grad():
+            state_features = feature_extractor.inference(state)
+            q_values = regression_layer(state_features)
+            action = torch.argmax(q_values).item()
+        
+        #Take the selected action
+        next_state, reward, terminated, truncated, info = env.step(action)
+        done = terminated or truncated
+        next_state = torch.tensor(next_state, dtype=torch.float32)
+        if done:
+           break
+        state = next_state
+        env.render()
+        
     env.close()
-    pass
+    return t
 
 #%%
 if __name__ == '__main__':
 
+
     # Forward Forward algo 
     env = gym.make("CartPole-v1")
-    DQL(env)
+    
+    # Initialize Feature extractor
+    input_size = env.observation_space.shape[0]
+     
+    # Initalize the postiive adn negative data
+    positive_data, _ = play_random(env)
+    positive_data, negative_data = fake_data_shuffle(positive_data)    
+
+    for ff_train in range(10):
+        print ('New feature extractor training n° ', ff_train)
+        # Train feature extractor
+        feature_extractor = Feature_extractor([input_size, 8, 8, 8])  
+        feature_extractor.train(positive_data, negative_data, num_epochs=200)
+        # Train last layer and get new states
+        # Initialize Q one layer net
+        feature_size = len(feature_extractor.inference(positive_data)[0])
+        #regression_layer = nn.Linear(feature_size, env.action_space.n)
+        positive_data, regression_layer = DQL(env, feature_extractor, feature_size, num_episodes=300)
+        positive_data, negative_data = fake_data_shuffle(positive_data)
+    
+    env.close()
+    
+    #%% Test the policy and render it
+    env = gym.make('CartPole-v1', render_mode='human')
+    test_policy(env, feature_extractor, regression_layer)
+    
+    
     #%%
     input_size = env.observation_space.shape[0] 
-    
     # Create the forward forward network
-    ff_net =  Feature_extractor([input_size, 20, 10, 10, 10, 10])
-    
+    ff_net =  feature_extractor([input_size, 10, 10])
     # Generate real states
     real_states, rnd_action_rewards = play_random(env)
-    
     #%% Create fake states
-    real_data, fake_data = Fake_data_shuffle(real_states)
-    #%% Create fake states
-    #real_data, fake_data, log_like = FDGenerator_GGM(real_states)
+    real_data, fake_data = fake_data_shuffle(real_states)
     
     #%% TEST FAKE DATA GENERATOR
     train_realData_l = 0.8 * len(real_data)
