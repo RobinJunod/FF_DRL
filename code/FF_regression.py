@@ -142,7 +142,7 @@ class Backprop_net(torch.nn.Module):
 
 #%%
 if __name__=='__main__':
-    X_train, X_test = dataset_GMM(n_samples= 1000, show_plot=False)
+    X_train, X_test = dataset_GMM(n_samples= 10000, show_plot=False)
     # create dataframe
     df_train =  pd.DataFrame(X_train, columns=['dim1', 'dim2', 'dim3', 'dim4'])
     df_test =  pd.DataFrame(X_test, columns=['dim1', 'dim2', 'dim3', 'dim4'])
@@ -159,10 +159,9 @@ if __name__=='__main__':
     positive_data, negative_data = fake_data_shuffle(positive_data)
     # Dimension of the FF networks layers
     dims = [4, 10, 5]
-    # Create/train the FF net to extract features
+    #%% Create/train the FF net to extract features
     feature_extractor = Feature_extractor(dims)
-    feature_extractor.train(positive_data, negative_data, num_epochs=400)
-    #%%
+    feature_extractor.train(positive_data, negative_data, num_epochs=1)
     # Create the last layer for regression and train it
     size_feature = len(feature_extractor.inference(positive_data)[0])
     regression_layer = nn.Linear(size_feature,1)
@@ -170,7 +169,7 @@ if __name__=='__main__':
     optimizer = torch.optim.Adam(regression_layer.parameters(), lr=0.01)
     
     # Train the model using the FF algorithm
-    num_epochs = 1000
+    num_epochs = 1
     for epoch in range(num_epochs):
         # Forward pass
         print('pos data :', positive_data.shape)
@@ -206,7 +205,7 @@ if __name__=='__main__':
     criterion_bp = nn.MSELoss()
     optimizer_bp = torch.optim.Adam(backprop_network.parameters(), lr=0.01)
     
-    num_epochs = 1000
+    num_epochs = 100
     for epoch in range(num_epochs):
         # Forward pass
         outputs = backprop_network(positive_data).float()  # Reshape x to a 2D tensor
@@ -231,6 +230,36 @@ if __name__=='__main__':
     
     
     
+    #%% Test without
+    regression_layer = nn.Linear(4,1)
+    criterion = nn.MSELoss()
+    optimizer = torch.optim.Adam(regression_layer.parameters(), lr=0.01)
+
+    # Train the model using the FF algorithm
+    num_epochs = 1000
+    for epoch in range(num_epochs):
+        # Forward pass
+        outputs = regression_layer(positive_data).float()
+        # Compute the loss
+        loss = criterion(outputs, Y_train.view(-1, 1))  # Reshape y to a 2D tensor
+        # Backpropagation and optimization
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        # Print the loss
+        if (epoch + 1) % 100 == 0:
+            print(f'Last layer , Epoch [{epoch + 1}/{num_epochs}], Loss: {loss.item():.4f}')
+
+
+    # Test the model on the test dataset
+    test_data = torch.tensor(X_test).float()
+    pos_test_data, neg_test_data = fake_data_shuffle(test_data)
+    test_outputs = regression_layer(test_data).float()
+    # R2 metric for this regression problem
+    y_true = Y_test.numpy()
+    y_pred = test_outputs.detach().numpy()
+    r2 = r2_score(y_true, y_pred)
+    print('R2 score : ', r2)
     #%% TODO
     #5 - train cartpole with FF and dimensionality shuffling
     #6 - explain in the report that we are trying to make the feature extractor 

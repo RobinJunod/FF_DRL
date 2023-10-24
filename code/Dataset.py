@@ -15,7 +15,8 @@ import pandas as pd
 from sklearn.mixture import GaussianMixture
 
 
-def dataset_GMM(n_samples= 1000, show_plot=True):
+def dataset_GMM(n_samples= 10000, show_plot=True):
+
     """Samples data points from a predefined GM with 3 components and 4 dimensions 
     Plot the result dataset
     returns : (np.array , np.array) : X_train and X_test, the train and test dataset
@@ -53,80 +54,59 @@ def dataset_GMM(n_samples= 1000, show_plot=True):
     data_points = np.vstack((samples_0,samples_1, samples_2))
     
     if show_plot:
-        # Calculate the density for each data point in both GMMs
         density_0 = multivariate_normal.pdf(data_points, means[0], covariances[0])
         density_1 = multivariate_normal.pdf(data_points, means[1], covariances[1])
         density_2 = multivariate_normal.pdf(data_points, means[2], covariances[2])
         density = weights[0] * density_0 + weights[1] * density_1 + weights[2] * density_2 
-        # Plotting part
-        fig = plt.figure(1)
-        ax = fig.add_subplot(111, projection='3d')
-        x1 = data_points[:, 0]
-        x2 = data_points[:, 1]
-        z = density
-        # Plot the data as a surface
-        ax.scatter(x1, x2, z, c=z,cmap='viridis')
-        # Set labels and title
-        ax.set_xlabel('X1')
-        ax.set_ylabel('X2')
-        ax.set_zlabel('Density')
-        ax.set_title('Dataset')
-        # Enable interactive mode
-        ax.mouse_init()
-        
-        plt.figure(2)
-        # Create a 2D plane for the contour plot
-        x1_plane, x2_plane = np.meshgrid(np.linspace(-5, 5, 100), np.linspace(-5, 5, 100))
-        # Calculate density for the contour plot on the plane
-        plane_points = np.column_stack((x1_plane.ravel(), x2_plane.ravel()))
-        density_plane_0 = multivariate_normal.pdf(plane_points, means[0][:2], covariances[0][:2, :2])
-        density_plane_1 = multivariate_normal.pdf(plane_points, means[1][:2], covariances[1][:2, :2])
-        density_plane_2 = multivariate_normal.pdf(plane_points, means[2][:2], covariances[2][:2, :2])
-        density_plane = weights[0] * density_plane_0 + weights[1] * density_plane_1 + weights[2] * density_plane_2
-        density_plane = density_plane.reshape(x1_plane.shape)
-        # Create the contour plot
-        plt.contourf(x1_plane, x2_plane, density_plane, levels=10, cmap='viridis')
-        plt.colorbar()
-        plt.xlabel('X1')
-        plt.ylabel('X2')
-        plt.title('Contour Plot of Density')
-
-        # Plotting part
-        fig = plt.figure(3)
-        ax = fig.add_subplot(111, projection='3d')
-        x3 = data_points[:, 2]
-        x4 = data_points[:, 3]
-        z = density
-        # Plot the data as a surface
-        ax.scatter(x3, x4, z, c=z,cmap='viridis')
-        # Set labels and title
-        ax.set_xlabel('X3')
-        ax.set_ylabel('X4')
-        ax.set_zlabel('Density')
-        ax.set_title('Dataset')
-        # Enable interactive mode
-        ax.mouse_init()
-        
-        plt.figure(4)
-        # Create a 2D plane for the contour plot
-        x1_plane, x2_plane = np.meshgrid(np.linspace(-5, 5, 100), np.linspace(-5, 5, 100))
-        # Calculate density for the contour plot on the plane
-        plane_points = np.column_stack((x1_plane.ravel(), x2_plane.ravel()))
-        density_plane_0 = multivariate_normal.pdf(plane_points, means[0][2:], covariances[0][2:, 2:])
-        density_plane_1 = multivariate_normal.pdf(plane_points, means[1][2:], covariances[1][2:, 2:])
-        density_plane_2 = multivariate_normal.pdf(plane_points, means[2][2:], covariances[2][2:, 2:])
-        density_plane = weights[0] * density_plane_0 + weights[1] * density_plane_1 + weights[2] * density_plane_2
-        density_plane = density_plane.reshape(x1_plane.shape)
-        # Create the contour plot
-        plt.contourf(x1_plane, x2_plane, density_plane, levels=10, cmap='viridis')
-        plt.colorbar()
-        plt.xlabel('X3')
-        plt.ylabel('X4')
-        plt.title('Contour Plot of Density')
-        
-        # Show the plots
-        plt.show()
-    
+        for x in range(3):
+            for y in range(x+1, 4):
+                # Plotting part
+                fig = plt.figure(1)
+                ax = fig.add_subplot(111, projection='3d')
+                x1 = data_points[:, x]
+                x2 = data_points[:, y]
+                z = density
+                # Plot the data as a surface
+                ax.scatter(x1, x2, z, c=z,cmap='viridis')
+                # Set labels and title
+                ax.set_xlabel(f'X{x+1}')
+                ax.set_ylabel(f'X{y+1}')
+                ax.set_zlabel('Density')
+                ax.set_title('Dataset')
+                # Enable interactive mode
+                ax.mouse_init()
+                #plt.show()
+                # Save the 3D plot as a PNG image
+                plt.savefig(f'../results/FF_Qlearning/x{x+1}x{y+1}_3D.png')
+                plt.close(fig)
+                
+                fig = plt.figure(2)
+                # Create a 2D plane for the contour plot
+                x1_plane, x2_plane = np.meshgrid(np.linspace(-5, 5, 100), np.linspace(-5, 5, 100))
+                # Calculate density for the contour plot on the plane
+                plane_points = np.column_stack((x1_plane.ravel(), x2_plane.ravel()))
+                
+                density_plane_0 = multivariate_normal.pdf(plane_points,
+                                                          np.array([means[0][x],means[0][y]]),
+                                                          covariances[0][[x, y]][:, [x, y]])
+                density_plane_1 = multivariate_normal.pdf(plane_points,
+                                                           np.array([means[1][x],means[1][y]]), 
+                                                           covariances[1][[x, y]][:, [x, y]])
+                density_plane_2 = multivariate_normal.pdf(plane_points,
+                                                          np.array([means[2][x],means[2][y]]), 
+                                                          covariances[2][[x, y]][:, [x, y]])
+                
+                density_plane = weights[0] * density_plane_0 + weights[1] * density_plane_1 + weights[2] * density_plane_2
+                density_plane = density_plane.reshape(x1_plane.shape)
+                # Create the contour plot
+                plt.contourf(x1_plane, x2_plane, density_plane, levels=10, cmap='viridis')
+                plt.colorbar()
+                plt.xlabel(f'X{x+1}')
+                plt.ylabel(f'X{y+1}')
+                plt.title('Contour Plot of Density')
+                #plt.show()
+                plt.savefig(f'../results/FF_Qlearning/x{x+1}x{y+1}_contours.png')
+                plt.close(fig)
     # Split train test dataset
     test_size = 0.2  # Test rate
     num_test_points = int(test_size * data_points.shape[0])
@@ -216,7 +196,7 @@ def fake_data_GGM(real_states, max_components_to_try=10):
 if __name__ == '__main__':
     # generate nonlinearly correlated data (to be used as positive data in a simulated dataset)
     # visualize the nonlinear relation between inputs with a simulated dataset with just 2 features
-    X_train, X_test = dataset_GMM(n_samples= 1000, show_plot=True)
+    X_train, X_test = dataset_GMM(n_samples= 10000, show_plot=True)
     df_train =  pd.DataFrame(X_train, columns=['dim1', 'dim2', 'dim3', 'dim4'])
     
 

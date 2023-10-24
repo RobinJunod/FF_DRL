@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import pandas as pd
 
 import gym
 from gym import wrappers
@@ -68,7 +69,7 @@ def play_random(env, num_episodes = 3000):
     return real_states, rnd_action_rewards
 
 
-def DQL(env, feature_extractor, feature_size, num_episodes=200, memory_capacity = 10000):
+def DQL(env, feature_extractor, feature_size, num_episodes=300, memory_capacity = 10000):
     # Hyperparameters
     gamma = 0.99
     epsilon_start = 1.0
@@ -85,9 +86,15 @@ def DQL(env, feature_extractor, feature_size, num_episodes=200, memory_capacity 
     target_regression_layer.load_state_dict(regression_layer.state_dict())
     target_regression_layer.eval()
     
+    # Create to try without feature extractor
+    # regression_layer0 =  nn.Linear(env.observation_space.sample().size, env.action_space.n)
+    # target_regression_layer0 = nn.Linear(env.observation_space.sample().size, env.action_space.n)
+    # target_regression_layer0.load_state_dict(regression_layer0.state_dict())
+    # target_regression_layer0.eval()
+    
     # Define the loss function and optimizer
     criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(regression_layer.parameters(), lr=0.0005)
+    optimizer = torch.optim.Adam(regression_layer.parameters(), lr=0.001) # TODO : change to feature model
         
 
     # Initialize epsilon for epsilon-greedy exploration
@@ -115,6 +122,7 @@ def DQL(env, feature_extractor, feature_size, num_episodes=200, memory_capacity 
                 with torch.no_grad():
                     state_features = feature_extractor.inference(state)
                     q_values = regression_layer(state_features)
+                    #q_values = regression_layer(state) # TODO : remove after
                     action = torch.argmax(q_values).item()
             # Take the selected action (New API)
             next_state, reward, terminated, truncated, info = env.step(action)
@@ -143,10 +151,11 @@ def DQL(env, feature_extractor, feature_size, num_episodes=200, memory_capacity 
                 # use the network to estimate the next q values given the buffer of states
                 # take a bunch of data to stabilize the learning
                 q_values = regression_layer(feature_extractor.inference(states))
+                #q_values = regression_layer(states) #TODO: remove after
                 # The next q values are determined by the more stable network (off policy)
                 next_q_values = target_regression_layer(feature_extractor.inference(next_states)).max(1).values
+                #next_q_values = target_regression_layer(next_states).max(1).values # TODO remove after
                 # The target q value is the computed as the sum of the reward and the futur best Q values
-                # for cartpole the reward is 1 at each step 
                 target_q_values = rewards + (1 - dones) * gamma * next_q_values
                 # takes the values of the action choosen by the epsilon greedy !! (so we have a q_value of dim 2 projecting to dim 1 (only retaining the best))
                 # It is a bit like taking the 'V-value' of the Q-value by selecting the best action
@@ -167,7 +176,7 @@ def DQL(env, feature_extractor, feature_size, num_episodes=200, memory_capacity 
         epsilon = max(epsilon_end, epsilon * epsilon_decay)
         # Update the target network
         if episode % target_update_frequency == 0:
-            target_regression_layer.load_state_dict(regression_layer.state_dict())
+            target_regression_layer.load_state_dict(regression_layer.state_dict())#TODO change to feature
             target_regression_layer.eval()
             
         # Print part
@@ -180,11 +189,10 @@ def DQL(env, feature_extractor, feature_size, num_episodes=200, memory_capacity 
     # moving_average(loss_evolution, x_axis_name='episode', y_axsis_name='loss', title='Moving average plot', window_size=20)
     moving_average(reward_evolution, x_axis_name='episode', y_axsis_name='Reward', title='Reward Evolution', window_size=50)
 
-  
     # Thoses real states will be used to train the feature extractor
     states, actions, rewards, next_states, dones = zip(*replay_memory)
     real_states = torch.stack(states)
-    return real_states, regression_layer
+    return real_states, regression_layer, reward_evolution
 
 
 def test_policy(env, feature_extractor, regression_layer):
@@ -235,11 +243,18 @@ if __name__ == '__main__':
         # Initialize Q one layer net
         feature_size = len(feature_extractor.inference(positive_data)[0])
         #regression_layer = nn.Linear(feature_size, env.action_space.n)
-        positive_data, regression_layer = DQL(env, feature_extractor, feature_size, num_episodes=300)
+        positive_data, regression_layer, reward_evolution = DQL(env, feature_extractor, feature_size, num_episodes=300)
         positive_data, negative_data = fake_data_shuffle(positive_data)
-    
+
+        # Save results
+        csv_file = f'config_{ff_train}_{len(positive_data)}.csv'
+        # Create a Pandas DataFrame from the lists
+        df1 = pd.DataFrame(reward_evolution, columns=['episode_R', 'Reward Evolution'])
+        # Save the DataFrames to a CSV file
+        df1.to_csv('../results/FF_Qlearning/logs/reward_'+csv_file, index=False)
+        
     env.close()
-    
+    # Saving the experiment
     #%% Test the policy and render it
     env = gym.make('CartPole-v1', render_mode='human')
     test_policy(env, feature_extractor, regression_layer)
@@ -251,10 +266,10 @@ if __name__ == '__main__':
     ff_net =  feature_extractor([input_size, 10, 10])
     # Generate real states
     real_states, rnd_action_rewards = play_random(env)
-    #%% Create fake states
+    # Create fake states
     real_data, fake_data = fake_data_shuffle(real_states)
     
-    #%% TEST FAKE DATA GENERATOR
+    # TEST FAKE DATA GENERATOR
     train_realData_l = 0.8 * len(real_data)
     train_fakeData_l = 0.8 * len(fake_data)
     
@@ -268,7 +283,6 @@ if __name__ == '__main__':
     ff_net.train(train_realData, train_fakeData, num_epochs=100)
     
     # Dataset split
-    #%%
     pos_data_result = ff_net.predict(test_realData)
     print('pos data: ', pos_data_result)
     print('pos data mean: ', pos_data_result.mean())
