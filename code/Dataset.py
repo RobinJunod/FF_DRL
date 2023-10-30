@@ -75,9 +75,9 @@ def dataset_GMM(n_samples= 10000, show_plot=True):
                 ax.set_title('Dataset')
                 # Enable interactive mode
                 ax.mouse_init()
-                #plt.show()
+                plt.show()
                 # Save the 3D plot as a PNG image
-                plt.savefig(f'../results/FF_Qlearning/x{x+1}x{y+1}_3D.png')
+                #plt.savefig(f'../results/FF_Qlearning/x{x+1}x{y+1}_3D.png')
                 plt.close(fig)
                 
                 fig = plt.figure(2)
@@ -104,8 +104,8 @@ def dataset_GMM(n_samples= 10000, show_plot=True):
                 plt.xlabel(f'X{x+1}')
                 plt.ylabel(f'X{y+1}')
                 plt.title('Contour Plot of Density')
-                #plt.show()
-                plt.savefig(f'../results/FF_Qlearning/x{x+1}x{y+1}_contours.png')
+                plt.show()
+                #plt.savefig(f'../results/FF_Qlearning/x{x+1}x{y+1}_contours.png')
                 plt.close(fig)
     # Split train test dataset
     test_size = 0.2  # Test rate
