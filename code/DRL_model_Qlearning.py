@@ -94,7 +94,7 @@ def DQL(env, feature_extractor, feature_size, num_episodes=300, memory_capacity 
     
     # Define the loss function and optimizer
     criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(regression_layer.parameters(), lr=0.001) # TODO : change to feature model
+    optimizer = torch.optim.Adam(regression_layer.parameters(), lr=0.0005) # TODO : change to feature model
         
 
     # Initialize epsilon for epsilon-greedy exploration
@@ -237,8 +237,8 @@ if __name__ == '__main__':
     for ff_train in range(10):
         print ('New feature extractor training n° ', ff_train)
         # Train feature extractor
-        feature_extractor = Feature_extractor([input_size, 8, 8, 8])  
-        feature_extractor.train(positive_data, negative_data, num_epochs=200)
+        feature_extractor = Feature_extractor([input_size, 20, 10, 10, 10])  
+        feature_extractor.train(positive_data, negative_data, num_epochs=100)
         # Train last layer and get new states
         # Initialize Q one layer net
         feature_size = len(feature_extractor.inference(positive_data)[0])

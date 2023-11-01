@@ -18,7 +18,7 @@ class Layer(nn.Linear):
         self.relu = torch.nn.ReLU()
         self.opt = torch.optim.Adam(self.parameters(), lr=0.03)
         # TODO: in original paper treshold = nb of neurons, 1:1
-        self.threshold = 2.0
+        self.threshold = 3.0
     
     def forward(self, x):
         """Forward function that takes a set of points (matrix) as input
@@ -269,7 +269,7 @@ if __name__=='__main__':
     optimizer = torch.optim.Adam(regression_layer.parameters(), lr=0.01)
 
     # Train the model using the FF algorithm
-    num_epochs = 1000
+    num_epochs = 300
     for epoch in range(num_epochs):
         # Forward pass
         outputs = regression_layer(positive_data).float()

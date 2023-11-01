@@ -14,14 +14,14 @@ import matplotlib.pyplot as plt
 class QNetwork(nn.Module):
     def __init__(self, input_size, output_size):
         super(QNetwork, self).__init__()
-        self.fc1 = nn.Linear(input_size, 64)
-        self.fc2 = nn.Linear(64, 32)
-        self.fc3 = nn.Linear(32, output_size)
-
+        #self.fc1 = nn.Linear(input_size, 64)
+        #self.fc2 = nn.Linear(64, 32)
+        #self.fc3 = nn.Linear(32, output_size)
+        self.fc1 = nn.Linear(input_size, output_size)
     def forward(self, x):
-        x = torch.relu(self.fc1(x))
-        x = torch.relu(self.fc2(x))
-        return self.fc3(x)
+        x = self.fc1(x)
+        #x = torch.relu(self.fc2(x))
+        return x #self.fc3(x)
 
 # plotting function
 def plot_tuples(tuples_list, x_label, y_label, title):
@@ -102,7 +102,7 @@ ep_length_evolution = []
 loss_evolution = []
 
 #% Training loop
-num_episodes = 200
+num_episodes = 2000
 for episode in range(num_episodes):
     state, info = env.reset()
     state = torch.tensor(state, dtype=torch.float32)
