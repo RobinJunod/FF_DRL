@@ -1,6 +1,7 @@
 # %%
 import gym
-import ale_py
+import time
+
 import random
 import numpy as np
 import torch
@@ -8,6 +9,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torchvision.transforms as T
 import torch.nn.functional as F
+import matplotlib.pyplot as plt
 
 from collections import deque
 from  model import QNetwork
@@ -21,16 +23,18 @@ class DQNAgent:
         self.memory = deque(maxlen=50000)
         self.batch_size = 32
         self.gamma = 0.99
+        self.target_upadte_freq = 10000
         self.epsilon = 1.0
         self.epsilon_min = 0.1
-        self.epsilon_decay = 0.000001 # Linear decay
-        self.lr = 0.00025
+        self.final_exploration_step = 10000 # 1'000'000 in paper, number step to stop exploring
+        self.epsilon_decay = (1-0.1)/self.final_exploration_step# Linear decay
+        self.epsilon_decay_exp = self.epsilon_min**(1/self.final_exploration_step ) # Exponentional decay
         # Deep Neural Network
         self.q_network = QNetwork(action_size)
         self.target_q_network = QNetwork(action_size)
         self.target_q_network.load_state_dict(self.q_network.state_dict())
         self.target_q_network.eval()
-        self.optimizer = optim.Adam(self.q_network.parameters(), lr=self.lr)
+        self.optimizer = optim.Adam(self.q_network.parameters(), lr=0.00025)
         # Images Preprocessing
         self.transforms = T.Compose([T.ToPILImage(), T.Resize((84, 84)), T.Grayscale(), T.ToTensor()])
         self.last_frame = 0
@@ -42,9 +46,10 @@ class DQNAgent:
         Returns:
             _type_: _description_
         """
-        frame = np.maximum(frame, self.last_frame)
+        frame_noFlick = np.maximum(frame, self.last_frame)
+        prepoc_frame = self.transforms(frame_noFlick)
         self.last_frame = frame
-        prepoc_frame = self.transforms(frame)
+        
         return prepoc_frame
     
     def stack_states(self, states):
@@ -100,12 +105,13 @@ class DQNAgent:
         loss.backward()
         self.optimizer.step()
         # Decrease the epsilon
-        self.epsilon = max(self.epsilon_min, self.epsilon - self.epsilon_decay)
+        self.epsilon = max(self.epsilon_min, self.epsilon - self.epsilon_decay) # lin decay
+        #self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay_exp) # exp decay
         
-
-def train(agent, env, nb_epsiode=10):
+#%
+def train(agent, env, nb_epsiode=10, save_model = False):
     
-    TARGET_UPDATE_FREQ = 10000
+    
     t_steps = 0
     
     for episode in range(nb_epsiode):
@@ -132,13 +138,23 @@ def train(agent, env, nb_epsiode=10):
             states.append(next_state)  # Add the newest frame
             stacked_next_state = agent.stack_states(states) # Create stacked next frame
             
+            # # Ensure that the data is in the range [0, 1]
+            # your_image_data = np.clip(states[-1], 0, 1)
+            # # Squeeze the singleton dimension if it exists
+            # your_image_data = np.squeeze(your_image_data)
+            # plt.imshow(your_image_data, cmap='gray')  # 'gray' colormap for grayscale images
+            # plt.show()
+            # plt.imshow(agent.last_frame)
+            # plt.show()
+            # time.sleep(1)
+            
             # stacked_state/next_state : [4,84,84] , action/reward : int , done : bool
             agent.remember(stacked_state, action, reward, stacked_next_state, done)
             # print(f'stacked state{stacked_state.shape}, action{action}, reward{reward}, next {stacked_next_state.shape}, done{done}')
             
             agent.optimize_model()
             
-            if t_steps % TARGET_UPDATE_FREQ == 0:
+            if t_steps % agent.target_upadte_freq == 0:
                 agent.update_target_q_network()
                 print(f"Update Target Net : Episode: {episode + 1}, Epsilon: {agent.epsilon}")
             
@@ -146,7 +162,8 @@ def train(agent, env, nb_epsiode=10):
         print(f'Total Reward over the episode:{total_reward} , Current epsilon : {agent.epsilon}')
 
     env.close()
-    torch.save(agent.q_network.state_dict(), 'dqn_breakout_q_network.pth')
+    if save_model:
+        torch.save(agent.q_network.state_dict(), 'dqn_breakout_q_network.pth')
     
     
     
@@ -161,5 +178,4 @@ if __name__ == '__main__':
 
     # Train DQL
     train(agent,env)
-    
 
