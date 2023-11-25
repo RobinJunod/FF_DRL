@@ -7,6 +7,7 @@
 
 #%%
 import random
+import copy
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
@@ -16,6 +17,7 @@ import pandas as pd
 
 import gym
 from gym import wrappers
+from gym.utils.save_video import save_video
 
 from FF_regression import Feature_extractor
 from Dataset import fake_data_shuffle
@@ -69,7 +71,7 @@ def play_random(env, num_episodes = 3000):
     return real_states, rnd_action_rewards
 
 
-def DQL(env, feature_extractor, feature_size, num_episodes=300, memory_capacity = 10000):
+def DQL(env, feature_extractor, feature_size, num_episodes=300, memory_capacity = 30000):
     # Hyperparameters
     gamma = 0.99
     epsilon_start = 1.0
@@ -195,8 +197,8 @@ def DQL(env, feature_extractor, feature_size, num_episodes=300, memory_capacity 
     return real_states, regression_layer, reward_evolution
 
 
-def test_policy(env, feature_extractor, regression_layer):
-    state, info = env.reset()
+def test_policy(env, feature_extractor, regression_layer, save_vid=True):
+    state, _ = env.reset()
     state = torch.tensor(state, dtype=torch.float32)
     done = False
     t = 0
@@ -213,9 +215,17 @@ def test_policy(env, feature_extractor, regression_layer):
         done = terminated or truncated
         next_state = torch.tensor(next_state, dtype=torch.float32)
         if done:
-           break
+            if save_vid:
+                save_video(
+                    env.render(),
+                    "../results/videos",
+                    fps=env.metadata["render_fps"],
+                    step_starting_index=0,
+                    episode_index=0)
+            break
+        
         state = next_state
-        env.render()
+        #env.render()
         
     env.close()
     return t
@@ -234,33 +244,47 @@ if __name__ == '__main__':
     positive_data, _ = play_random(env)
     positive_data, negative_data = fake_data_shuffle(positive_data)    
 
-    for ff_train in range(10):
+    # To save the model
+    Best_FE_score = 0
+    Best_FE = None
+    Best_LL = None
+    
+    for ff_train in range(8):
         print ('New feature extractor training n° ', ff_train)
         # Train feature extractor
         feature_extractor = Feature_extractor([input_size, 20, 10, 10, 10])  
-        feature_extractor.train(positive_data, negative_data, num_epochs=100)
+        feature_extractor.train(positive_data, negative_data, num_epochs=150)
         # Train last layer and get new states
         # Initialize Q one layer net
         feature_size = len(feature_extractor.inference(positive_data)[0])
         #regression_layer = nn.Linear(feature_size, env.action_space.n)
-        positive_data, regression_layer, reward_evolution = DQL(env, feature_extractor, feature_size, num_episodes=300)
+        positive_data, regression_layer, reward_evolution = DQL(env, feature_extractor, feature_size, num_episodes=350)
         positive_data, negative_data = fake_data_shuffle(positive_data)
 
-        # Save results
-        csv_file = f'config_{ff_train}_{len(positive_data)}.csv'
         # Create a Pandas DataFrame from the lists
         df1 = pd.DataFrame(reward_evolution, columns=['episode_R', 'Reward Evolution'])
         # Save the DataFrames to a CSV file
-        df1.to_csv('../results/FF_Qlearning/logs/reward_'+csv_file, index=False)
-        
+        df1.to_csv(f'../results/FF_Qlearning/logs/reward_config_{ff_train}_{len(positive_data)}.csv', index=False)
+        # Save the best FE for the inference part
+        sum_last_10_total_rewards = sum([total_reward for _, total_reward in reward_evolution[-10:]])
+        if sum_last_10_total_rewards > Best_FE_score:
+            Best_FE_score = sum_last_10_total_rewards
+            Best_FE = copy(feature_extractor)
+            Best_LL = copy(regression_layer)
+            
     env.close()
     # Saving the experiment
+    
+    
     #%% Test the policy and render it
-    env = gym.make('CartPole-v1', render_mode='human')
-    test_policy(env, feature_extractor, regression_layer)
+
+
+    #env = gym.make('CartPole-v1', render_mode='rgb_array_list')
+    env = gym.make('CartPole-v1', render_mode='human')    
+    test_policy(env, Best_FE, Best_LL, save_vid=False)
     
     
-    #%%
+    #%% RANDOM STUFF TO 
     input_size = env.observation_space.shape[0] 
     # Create the forward forward network
     ff_net =  feature_extractor([input_size, 10, 10])
@@ -281,14 +305,12 @@ if __name__ == '__main__':
     
     # Train the network on these real and fake states
     ff_net.train(train_realData, train_fakeData, num_epochs=100)
-    
     # Dataset split
     pos_data_result = ff_net.predict(test_realData)
     print('pos data: ', pos_data_result)
     print('pos data mean: ', pos_data_result.mean())
     print('pos data std: ', pos_data_result.std())
-    
-    
+
     neg_data_result = ff_net.predict(test_fakeData)
     print('neg data: ', neg_data_result)
     print('neg data mean: ', neg_data_result.mean())
