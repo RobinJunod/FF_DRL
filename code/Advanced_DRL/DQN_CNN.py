@@ -83,7 +83,7 @@ class DQNAgent:
         q_values = q_values.gather(1, actions.view(-1, 1))
         # Compute the loss from the q values differences (the prediction and the target) (2-arrays of length 32 (batch-size))
         loss = F.smooth_l1_loss(q_values, target_q_values.view(-1, 1))
-        loss = F.l1_loss(q_values, target_q_values.view(-1, 1)) 
+        # loss = F.l1_loss(q_values, target_q_values.view(-1, 1)) 
         # Optimization using basic pytorch code
         self.optimizer.zero_grad()
         loss.backward()
@@ -93,14 +93,13 @@ class DQNAgent:
         #self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay_exp) # exp decay
         
 #%
-def train(agent, env, nb_epsiode=10, save_model = False):
+def train(agent, env, nb_epsiode=10, save_model=True):
     
     t_steps = 0
     
     for episode in range(nb_epsiode):
         print('Start episode :', episode)
         state, info = env.reset()
-
 
         total_reward = 0
         done = False
@@ -138,13 +137,9 @@ if __name__ == '__main__':
     env = gym.make('Breakout-v0')
     env = BreakoutWrapper(env, stack_frames=4)
     
-    action_size = env.action_space.n
-
+    action_size = env.custom_action_space
+    #%%
     # Initialize the DQN agent
     agent = DQNAgent(action_size)
-
     # Train DQL
-    train(agent,env)
-
-
-# %%
+    train(agent,env, nb_epsiode=2000)

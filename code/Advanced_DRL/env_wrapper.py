@@ -19,7 +19,7 @@ class BreakoutWrapper(gym.Wrapper):
     def __init__(self, env, stack_frames=4):
         super(BreakoutWrapper, self).__init__(env)
         self.stack_frames = stack_frames
-
+        self.custom_action_space = 3
 
     def reset(self):
         """Each time it is called, play action Fire to start new episode
@@ -50,7 +50,6 @@ class BreakoutWrapper(gym.Wrapper):
         self.frames.append(self.preprocess(obs))
 
         if info['lives'] < 5:
-            print('CATASTROPHIQUE, CEST PERDU')
             terminated = True
             reward = -0.5 # Custom reward
             
@@ -58,12 +57,22 @@ class BreakoutWrapper(gym.Wrapper):
         return self._get_state(), reward, terminated, truncated, info
 
     def show_current_state(self):
+        """Show the images of the current state
+        """
         current_state = self._get_state()
         fig, axes = plt.subplots(1, 4, figsize=(16, 4))
         for i in range(4):
             axes[i].imshow(current_state[i, :, :], cmap='gray')
             axes[i].axis('off')
             axes[i].set_title(f'Frame {i + 1}')
+            
+    def show_current_obs(self):
+        """Show the images of the current state
+        """
+        if env.render_mode == 'rgb_array':
+            obs = self.env.render()
+            plt.imshow(obs[:, :, :], cmap='gray')
+        else: print('Render mode must be rgb_array to use show_current_obs in wrapper')
 
     def preprocess(self, obs):
         preprocess = T.Compose([T.ToPILImage(), 
@@ -85,7 +94,7 @@ class BreakoutWrapper(gym.Wrapper):
             return self.frames[-1]
 
     def _custom_crop(self, img):
-        return T.functional.crop(img, top=25, left=10, height=img.size[1] - 25, width=img.size[0] - 20)
+        return T.functional.crop(img, top=30, left=10, height=img.size[1] - 30, width=img.size[0] - 20)
     
 
 
@@ -98,9 +107,10 @@ if __name__=='__main__':
     
     # make 10 time same action
     for _ in range(10):
-        env.step(0)
+        env.step(1)
     env.show_current_state()
     
 
         
     
+# %%
