@@ -24,6 +24,7 @@ def mask_gen():
         random_image = convolve2d(random_image, blur_filter, mode='same', boundary='symm')
     mask = (random_image > 0.5).astype(np.float32)
     return mask
+
 # Negative data generation Goeffrey Hinton
 def negative_data_gen(batch):
     indexes = torch.randperm(batch.shape[0])
@@ -103,7 +104,7 @@ class FFConv2d(nn.Conv2d):
 
         return self.forward(x_pos).detach(), self.forward(x_neg).detach(), loss.item()
     
-    def train_1(self, x_pos, x_neg, nb_epoch):
+    def train_n(self, x_pos, x_neg, nb_epoch):
         #TODO: add validation to stop training
         for i in range(nb_epoch):
             g_pos = self.forward(x_pos).pow(2).mean(1)
@@ -198,9 +199,6 @@ class FFConvNet(nn.Module):
         # Concatenate the flattened layers along the second dimension
         concatenated_layers = torch.cat((layer1_flat, layer2_flat, layer3_flat), dim=1)
         
-        # Pass the concatenated layers through the linear layer
-        # output = self.linear(concatenated_layers)
-        
         return concatenated_layers
 
     
@@ -212,18 +210,16 @@ class FFConvNet(nn.Module):
             total_loss += loss_
         return total_loss
     
-    def train_1(self, train_loader, nb_epoch):
+    def train_n(self, train_loader, nb_epoch):
         for i, layer in enumerate(self.layers):
             print('training layer', i, '...')
-            h_pos, h_neg = layer.train_LL(train_loader, nb_epoch)
+            h_pos, h_neg = layer.train_n(train_loader, nb_epoch)
                 
     def goodness(self, data):
         g_tot = 0 
         for i, layer in enumerate(self.layers):
             g = layer.goodness(data)
             g_tot += g
-            #g_l2 = self.conv2.goodness(data)
-            #g_l3 = self.conv3.goodness(data)
         return g_tot
 
 
@@ -240,7 +236,6 @@ class LinearClassification(nn.Module):
         self.linear = torch.nn.Linear(input_dimension, 10)
         self.optimizer = Adam(self.parameters(), lr=learning_rate_lc)
         self.criterion = nn.CrossEntropyLoss()
-        self.softmax = nn.Softmax()
         
     def forward(self,x):
         return self.linear(x)
@@ -248,57 +243,52 @@ class LinearClassification(nn.Module):
     def predict(self,x):
         h_activity = self.feature_extractor.respresentation_vects(x)
         output = self.forward(h_activity)
-        soft_out = self.softmax(output)
-        return soft_out.argmax(1)
+        return output.argmax(1)
     
     def accuracy_f(self, y_pred, y_true):
+        # Compute the accuracy
         batch_size = y_pred.size(0)
-        _, predicted_labels = y_pred.max(1)
-        y_pred_onehot = torch.zeros_like(y_pred)
-        y_pred_onehot.scatter_(1, predicted_labels.view(-1,1), 1)
-        correct = (y_pred_onehot == y_true).sum().item()
-        accuracy = correct / (batch_size * y_true.size(1))
+        _, y_pred_value = y_pred.max(1)
+        _, y_true_value = y_true.max(1)
+        correct = torch.eq(y_pred_value, y_true_value).sum(dim=0).item()
+        accuracy = correct / batch_size
         return accuracy
-    
-    def label_to_oh(self, y):
-        y = y.numpy().reshape(-1,1)
-        ohe = OneHotEncoder().fit(np.arange(10).reshape((10,1)))
-        ohe_y = ohe.transform(y).toarray()
-        return torch.Tensor(ohe_y)
         
     def train(self, data_loader,epochs=20):
-        
+        ohe = OneHotEncoder().fit(np.arange(10).reshape((10,1))) 
         for epoch in tqdm(range(epochs), desc="Training Linear Classifier"):
             batch_loss = []
             batch_accuracy = []
             for batch in iter(data_loader):
                 x,y = batch
-                target = self.label_to_oh(y)
+                # OH encoding of the label
+                target = torch.Tensor(ohe.transform(y.numpy().reshape(-1, 1)).toarray())
                 h_activity = self.feature_extractor.respresentation_vects(x)
                 output = self.forward(h_activity)
-                accuracy = self.accuracy_f(output,target)
                 loss = self.criterion(output,target)
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
+                # Logs data
                 batch_loss.append(loss)
+                accuracy = self.accuracy_f(output,target)
                 batch_accuracy.append(float(accuracy))
             self.epoch_acc.append(float(sum(batch_accuracy)/len(batch_accuracy)))
             self.epoch_loss.append(float(sum(batch_loss)/len(batch_loss)))
-            #linear_loop.set_description(f"Epoch [{i+1}/{epoch_num}]: ")
-            #linear_loop.set_postfix(loss=self.epoch_loss[i],accuracy=self.epoch_acc[i])    
             
     def test(self, data_loader):
         batch_loss = []
         batch_accuracy = []
         test_loss = 0
+        ohe = OneHotEncoder().fit(np.arange(10).reshape((10,1))) 
         for batch in iter(data_loader):
             x,y = batch
-            target = self.label_to_oh(y)
+            target = torch.Tensor(ohe.transform(y.numpy().reshape(-1, 1)).toarray())
             h_activity = self.feature_extractor.respresentation_vects(x)
             output = self.forward(h_activity)
-            accuracy = self.accuracy_f(output,target)
+            # Logs data
             loss = self.criterion(output,target)
+            accuracy = self.accuracy_f(output,target)
             batch_loss.append(loss)
             batch_accuracy.append(float(accuracy))
         test_loss = float(sum(batch_loss)/len(batch_loss))
@@ -310,7 +300,7 @@ if __name__=='__main__':
     batchsize = 1024
     learning_rate = 0.03
     learning_rate_lc = 0.05
-    epochs = 20
+    epochs = 5
     threshold = 1.0
     image_shape = (1,28,28)
     
@@ -342,10 +332,11 @@ if __name__=='__main__':
             
         print(f'Loss mean of the epoch {epoch_loss_mean}')
     
+    #feature_extractor_output = FF_feature_extractor.respresentation_vects(next(iter(train_loader))[0]).shape[1] # With current feature extractor
     feature_extractor_output = 3440 # With current feature extractor
-    #%%
+    #%% Training method 1 Linear classifier
     Linear_classifier = LinearClassification(FF_feature_extractor, input_dimension=feature_extractor_output)
-    Linear_classifier.train(train_loader, epochs=20)
+    Linear_classifier.train(train_loader, epochs=10)
     
     test_loss,test_acc = Linear_classifier.test(test_loader)
     print("Test Loss: ",test_loss)

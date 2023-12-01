@@ -7,9 +7,10 @@ import numpy as np
 import torch
 import gym
 from gym import wrappers
+from gym.utils.save_video import save_video
 
 from FF_network import Net
-from ..plotting_tools import moving_average, linear_graph
+#from ..plotting_tools import moving_average, linear_graph
 
 
 def DRL_train_network(env, ff_net, cell=False, **kwargs):
@@ -153,6 +154,38 @@ def DRL_train_network(env, ff_net, cell=False, **kwargs):
     
     return ff_net, logs
 
+
+def test_policy(env, ff_net_trained, save_vid=True):
+    state, _ = env.reset()
+    state = torch.tensor(state, dtype=torch.float32)
+    done = False
+    t = 0
+    while not done and t < 500:
+        t += 1
+        with torch.no_grad():
+            input_1  = torch.cat((state, torch.tensor([1])), dim=0)
+            action_1 = ff_net_trained.predict(input_1).item()
+            input_0  = torch.cat((state, torch.tensor([0])), dim=0)
+            action_0 = ff_net_trained.predict(input_0).item()
+            action = 1 if action_1 > action_0 else 0
+        
+        #Take the selected action
+        next_state, reward, terminated, truncated, info = env.step(action)
+        done = terminated or truncated
+        next_state = torch.tensor(next_state, dtype=torch.float32)
+        if done:
+            if save_vid:
+                save_video(
+                    env.render(),
+                    "../results/videos",
+                    fps=env.metadata["render_fps"],
+                    step_starting_index=0,
+                    episode_index=0)
+            break
+        state = next_state
+        #env.render()
+    env.close()
+    return t
 #%%
 if __name__ == '__main__':
     # __________PARSERS__________
@@ -182,6 +215,18 @@ if __name__ == '__main__':
         "theta_decay": args.theta_decay,
         "theta_end": args.theta_end,
     }
+    ##%% To use for cell running
+    #arguments = {
+    #    "memory_capacity":10000,
+    #    "num_episodes":200,
+    #    "num_epochs":50,
+    #    "epsilon_start":1,
+    #    "epsilon_decay":0.995,
+    #    "epsilon_end":0.1,
+    #    "theta_start":5,
+    #    "theta_decay":1.05,
+    #    "theta_end":5,
+    #}
     
     # Forward Forward algo 
     env = gym.make("CartPole-v1")
@@ -191,7 +236,11 @@ if __name__ == '__main__':
     ff_net =  Net([input_size, 50, 20, 20])
     ff_net_trained, logs = DRL_train_network(env, ff_net, **arguments)
     
-    # Plot the logs
+    #%% Play
+    env_test = gym.make('CartPole-v1', render_mode='rgb_array_list')  
+    test_policy(env_test, ff_net_trained, save_vid=True)
+    
+    #%% Plot the logs
     reward_evolution, exploration_rate_evolution = logs
     
     # Saving the experiment
