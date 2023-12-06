@@ -13,30 +13,30 @@ import matplotlib.pyplot as plt
 
 from collections import deque
 from  model import QNetwork
-from env_wrapper import BreakoutWrapper
+from atari_wrappers import wrap_deepmind
+
+from replay_buffer import ReplayBuffer
 
 # Define the DQN Agent
 class DQNAgent:
     def __init__(self, action_size=3):
         self.action_size = action_size
         # Hyperparameters
-        self.memory = deque(maxlen=500000) # 1'000'000 in paper, rep mem size
+        self.memory = ReplayBuffer(1000000, 4) # 1'000'000 in paper, rep mem size
         self.batch_size = 32 
         self.gamma = 0.99
         self.target_upadte_freq = 10000
         self.epsilon = 1.0
         self.epsilon_min = 0.1
-        self.final_exploration_step = 300000 # 1'000'000 in paper, number step to stop exploring
+        self.final_exploration_step = 1000000 # 1'000'000 in paper, number step to stop exploring
         self.epsilon_decay = (1-0.1)/self.final_exploration_step # Linear decay
         self.epsilon_decay_exp = self.epsilon_min**(1/self.final_exploration_step ) # Exponentional decay
         # Deep Neural Network
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # to use gpu
-        print("Using device:", self.device)
-        self.q_network = QNetwork(action_size).to(self.device)
-        self.target_q_network = QNetwork(action_size).to(self.device)
+        self.q_network = QNetwork(action_size)
+        self.target_q_network = QNetwork(action_size)
         self.target_q_network.load_state_dict(self.q_network.state_dict())
         self.target_q_network.eval()
-        self.optimizer = optim.Adam(self.q_network.parameters(), lr=1e-4)
+        self.optimizer = optim.Adam(self.q_network.parameters(), lr=0.00025)
         # Loggers
 
 
@@ -62,7 +62,7 @@ class DQNAgent:
         
     def act(self, state):
         # Choice of the agent
-        state = state.unsqueeze(0).to(self.device)
+        state = state.unsqueeze(0)
         q_values = self.q_network(state)
         action = torch.argmax(q_values).item()
         return action
@@ -74,11 +74,11 @@ class DQNAgent:
         # Get samples from replay memory
         minibatch = random.sample(self.memory, self.batch_size)
         states, actions, rewards, next_states, dones = zip(*minibatch)
-        states = torch.stack(states).to(self.device)
-        next_states = torch.stack(next_states).to(self.device)
-        rewards = torch.tensor(rewards, dtype=torch.float32).to(self.device)
-        actions = torch.tensor(actions, dtype=torch.long).to(self.device)
-        dones = torch.tensor(dones, dtype=torch.int).to(self.device)
+        states = torch.stack(states)
+        next_states = torch.stack(next_states)
+        rewards = torch.tensor(rewards, dtype=torch.float32)
+        actions = torch.tensor(actions, dtype=torch.long)
+        dones = torch.tensor(dones, dtype=torch.int)
         
         # Get all the Q values at each states 
         q_values = self.q_network(states)
@@ -89,8 +89,7 @@ class DQNAgent:
         # Select the Q values of the actions taken
         q_values = q_values.gather(1, actions.view(-1, 1))
         # Compute the loss from the q values differences (the prediction and the target) (2-arrays of length 32 (batch-size))
-        loss = F.smooth_l1_loss(q_values, target_q_values.view(-1, 1)).to(self.device)
-
+        loss = F.smooth_l1_loss(q_values, target_q_values.view(-1, 1))
         # Optimization using basic pytorch code
         self.optimizer.zero_grad()
         loss.backward()
@@ -101,14 +100,14 @@ class DQNAgent:
         return loss.item()
         
 #%
-
-def train(agent, env, nb_epsiode=100, save_model=True, render=False):
+def train(agent, env, nb_epsiode=100, save_model = True, render=False):
     
     t_steps = 0
     
     for episode in range(nb_epsiode):
         print('Start episode :', episode)
         state, info = env.reset()
+
 
         total_reward = 0
         done = False
@@ -141,10 +140,7 @@ def train(agent, env, nb_epsiode=100, save_model=True, render=False):
             state = next_state
             
         print(f'Total Reward over the episode:{total_reward} , Current epsilon : {agent.epsilon}')
-        if save_model==True and t_steps % 100000 == 0:
-            model_save_path = f'dqn_breakout_q_network_{t_steps}.pth'
-            torch.save(agent.q_network.state_dict(), model_save_path)
-            
+ 
     env.close()
     if save_model:
         torch.save(agent.q_network.state_dict(), 'dqn_breakout_q_network.pth')
@@ -155,33 +151,47 @@ def test(agent, pth_path, env, save_video=False, render=True):
     agent.q_network.load_state_dict(torch.load(pth_path))
     agent.q_network.eval()
     t_steps = 0
+
     for episode in range(10):  # You can adjust the number of episodes for testing
         print('Start testing episode:', episode)
-        state, _ = env.reset()
+        state, info = env.reset()
+
         total_reward = 0
         done = False
         step = 0
+
         while not done:
             step += 1
             t_steps += 1
-            action = agent.act(state)
-            next_state, reward, terminated, truncated, _ = env.step(action)
+
+            action = agent.act_egreedy(state)
+            next_state, reward, terminated, truncated, info = env.step(action)
+
             if render:
                 env.render()
+
             done = terminated or truncated
             total_reward += reward
             state = next_state
+
         print(f'Total Reward for testing episode {episode}: {total_reward}')
+
     env.close()
-    
+#%%
 if __name__ == '__main__':
-    
     # Initialize the Breakout environment
     env = gym.make('BreakoutNoFrameskip-v4')
-    env = BreakoutWrapper(env, stack_frames=4)
-    action_size = env.action_space.n
- 
+    env = wrap_deepmind(env)
+    
+    
+    #%%
+    action_size = 3
+
     # Initialize the DQN agent
     agent = DQNAgent(action_size)
+
     # Train DQL
     train(agent,env, nb_epsiode=30000, render=False)
+
+
+# %%

@@ -18,8 +18,10 @@ preprocess(obs) == after img reshape and crop
 class BreakoutWrapper(gym.Wrapper):
     def __init__(self, env, stack_frames=4):
         super(BreakoutWrapper, self).__init__(env)
+        self.action_space.n = 3
         self.stack_frames = stack_frames
-        self.custom_action_space = 3
+        self.frames = []
+
 
     def reset(self):
         """Each time it is called, play action Fire to start new episode
@@ -29,7 +31,6 @@ class BreakoutWrapper(gym.Wrapper):
         self.env.reset()
         obs, _, _, _, info = self.env.step(1)  # Fire to start new episode
         self.frames = [self.preprocess(obs)] * self.stack_frames  # Initialize frames with the first observation
-        
         return self._get_state(), info
 
     def step(self, action):
@@ -43,28 +44,19 @@ class BreakoutWrapper(gym.Wrapper):
             action = 2
         elif action ==2:
             action = 3
-            
         obs, reward, terminated, truncated, info = self.env.step(action)
-        
+        rem_lives = info['lives']
         self.frames.pop(0)
         self.frames.append(self.preprocess(obs))
 
-        if info['lives'] < 5:
-            terminated = True
-            reward = -0.5 # Custom reward
-            
+        if rem_lives< 5:
+            print(f'agent has lost a life {rem_lives}')
 
+            terminated = True
+            reward = -1.0 # pen for losing a life
+            
         return self._get_state(), reward, terminated, truncated, info
 
-    def show_current_state(self):
-        """Show the images of the current state
-        """
-        current_state = self._get_state()
-        fig, axes = plt.subplots(1, 4, figsize=(16, 4))
-        for i in range(4):
-            axes[i].imshow(current_state[i, :, :], cmap='gray')
-            axes[i].axis('off')
-            axes[i].set_title(f'Frame {i + 1}')
             
     def show_current_obs(self):
         """Show the images of the current state
@@ -73,6 +65,7 @@ class BreakoutWrapper(gym.Wrapper):
             obs = self.env.render()
             plt.imshow(obs[:, :, :], cmap='gray')
         else: print('Render mode must be rgb_array to use show_current_obs in wrapper')
+
 
     def preprocess(self, obs):
         preprocess = T.Compose([T.ToPILImage(), 
@@ -83,6 +76,32 @@ class BreakoutWrapper(gym.Wrapper):
                                 lambda x: x.squeeze() # Squeeze the extra dimension
                                 ])
         return preprocess(obs)
+    
+    def show_current_state(self):
+        current_state = self._get_state()
+        fig, axes = plt.subplots(1, 4, figsize=(16, 4))
+        for i in range(4):
+            axes[i].imshow(current_state[i, :, :], cmap='gray')
+            axes[i].axis('off')
+            axes[i].set_title(f'Frame {i + 1}')
+        plt.show()
+        
+    def save_current_state_images(self, save_path, t_steps):
+        current_state = self._get_state()
+        fig, axes = plt.subplots(1, 4, figsize=(16, 4))
+        for i in range(4):
+            axes[i].imshow(current_state[i, :, :], cmap='gray')
+            axes[i].axis('off')
+            axes[i].set_title(f'Frame {i + 1}')
+            # Save each image to a file
+            img_path = f"{save_path}/frame_{i + 1}.png"
+            plt.imsave(img_path, current_state[i, :, :], cmap='gray')
+        # Save the entire figure as a combined image
+        combined_img_path = f"{save_path}/combined_frames_{t_steps}.png"
+        plt.savefig(combined_img_path, bbox_inches='tight', pad_inches=0.1)
+        # Close the matplotlib figure to free up resources
+        plt.close()
+
     
     
     def _get_state(self):
@@ -101,7 +120,7 @@ class BreakoutWrapper(gym.Wrapper):
 #%%
 if __name__=='__main__':
     
-    env = gym.make('Breakout-v0', render_mode='rgb_array')
+    env = gym.make('BreakoutNoFrameskip-v4', render_mode='rgb_array')
     env = BreakoutWrapper(env, stack_frames=4)
     env.reset()
     
