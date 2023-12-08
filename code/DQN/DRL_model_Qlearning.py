@@ -24,9 +24,6 @@ from Dataset import fake_data_shuffle
 from plotting_tools import  moving_average
 
 
-
-
-
 def play_random(env, num_episodes = 3000):
     """Play with random actions
     Args:

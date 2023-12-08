@@ -124,12 +124,18 @@ if __name__=='__main__':
     env = BreakoutWrapper(env, stack_frames=4)
     env.reset()
     
+    # Test the 
     # make 10 time same action
+    from model import QNetwork
+    qnet = QNetwork(3)
     for _ in range(10):
         env.step(1)
     env.show_current_state()
     
-
-        
+    # try to pass a state through the net
+    state, reward, terminated, truncated, info = env.step(0)
+    with torch.no_grad():
+        qval = qnet(state.unsqueeze(0))
+        print(qval)
     
 # %%

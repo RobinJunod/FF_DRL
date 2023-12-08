@@ -4,6 +4,7 @@ import torch.nn as nn
 # Define the Q-network
 class QNetwork(nn.Module):
     """Network to optimize the DQN with backpropagation
+    Takes as input :  B x C x H x W format
     Args:
         num action (int): the number of possible actions
     """

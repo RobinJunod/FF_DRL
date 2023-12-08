@@ -12,7 +12,7 @@ import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
 from collections import deque
-from  model import QNetwork
+from model import QNetwork
 from env_wrapper import BreakoutWrapper
 
 # Define the DQN Agent
@@ -23,12 +23,13 @@ class DQNAgent:
         self.memory = deque(maxlen=500000) # 1'000'000 in paper, rep mem size
         self.batch_size = 32 
         self.gamma = 0.99
-        self.target_upadte_freq = 10000
+        self.target_update_freq = 10000
         self.epsilon = 1.0
         self.epsilon_min = 0.1
-        self.final_exploration_step = 300000 # 1'000'000 in paper, number step to stop exploring
+        self.final_exploration_step = 1000000 # 1'000'000 in paper, number step to stop exploring
         self.epsilon_decay = (1-0.1)/self.final_exploration_step # Linear decay
         self.epsilon_decay_exp = self.epsilon_min**(1/self.final_exploration_step ) # Exponentional decay
+        self.no_learning_steps = 1000
         # Deep Neural Network
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # to use gpu
         print("Using device:", self.device)
@@ -36,7 +37,7 @@ class DQNAgent:
         self.target_q_network = QNetwork(action_size).to(self.device)
         self.target_q_network.load_state_dict(self.q_network.state_dict())
         self.target_q_network.eval()
-        self.optimizer = optim.Adam(self.q_network.parameters(), lr=1e-4)
+        self.optimizer = optim.Adam(self.q_network.parameters(), lr=5e-4)
         # Loggers
 
 
@@ -61,7 +62,7 @@ class DQNAgent:
             return self.act(state)
         
     def act(self, state):
-        # Choice of the agent
+        # Has to Convert to (N, C, H, W), only format handled by conv2d        
         state = state.unsqueeze(0).to(self.device)
         q_values = self.q_network(state)
         action = torch.argmax(q_values).item()
@@ -69,7 +70,7 @@ class DQNAgent:
     
     def optimize_model(self):
         # Here states and next_states are 4 succ img in grey scale
-        if len(self.memory) < self.batch_size:
+        if len(self.memory) < self.no_learning_steps:
             return
         # Get samples from replay memory
         minibatch = random.sample(self.memory, self.batch_size)
@@ -99,16 +100,13 @@ class DQNAgent:
         self.epsilon = max(self.epsilon_min, self.epsilon - self.epsilon_decay) # lin decay
         #self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay_exp) # exp decay
         return loss.item()
-        
-#%
 
 def train(agent, env, nb_epsiode=100, save_model=True, render=False):
     
     t_steps = 0
-    
     for episode in range(nb_epsiode):
         print('Start episode :', episode)
-        state, info = env.reset()
+        state, _ = env.reset()
 
         total_reward = 0
         done = False
@@ -119,7 +117,7 @@ def train(agent, env, nb_epsiode=100, save_model=True, render=False):
             #print('state :', state.shape)
             action = agent.act_egreedy(state) # Agent selects action
             
-            next_state, reward, terminated, truncated, info = env.step(action)
+            next_state, reward, terminated, truncated, _ = env.step(action)
             if render:
                 env.render()
             done = terminated or truncated
@@ -128,23 +126,21 @@ def train(agent, env, nb_epsiode=100, save_model=True, render=False):
             # print(f'stacked state{stacked_state.shape}, action{action}, reward{reward}, next {stacked_next_state.shape}, done{done}')
             agent.remember(state, action, reward, next_state, done)
             loss = agent.optimize_model()
-            
-            if t_steps % 30000 == 0:
+            # save image of states
+            if t_steps % 300000 == 0:
                 env.save_current_state_images('img_state', t_steps)
                 print(f'loss at ts {t_steps} : {loss}')
-            
-            if t_steps % agent.target_upadte_freq == 0:
+            # save network weights
+            if save_model==True and t_steps % 100000 == 0:
+                model_save_path = f'dqn_breakout_q_network_{t_steps}.pth'
+                torch.save(agent.q_network.state_dict(), model_save_path)
+            # update target network        
+            if t_steps % agent.target_update_freq == 0:
                 agent.update_target_q_network()
                 print(f"Update Target Net : Episode: {episode + 1}, Epsilon: {agent.epsilon}")
             
-            
             state = next_state
-            
         print(f'Total Reward over the episode:{total_reward} , Current epsilon : {agent.epsilon}')
-        if save_model==True and t_steps % 100000 == 0:
-            model_save_path = f'dqn_breakout_q_network_{t_steps}.pth'
-            torch.save(agent.q_network.state_dict(), model_save_path)
-            
     env.close()
     if save_model:
         torch.save(agent.q_network.state_dict(), 'dqn_breakout_q_network.pth')
