@@ -30,7 +30,7 @@ class DQNAgent:
         self.final_exploration_step = 1_000_000 # 1'000'000 in paper, number step to stop exploring
         self.epsilon_decay = (1-0.1)/self.final_exploration_step # Linear decay
         self.epsilon_decay_exp = self.epsilon_min**(1/self.final_exploration_step ) # Exponentional decay
-        self.no_learning_steps = 1_000
+        self.no_learning_steps = 10_000
         # Deep Neural Network
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # to use gpu
         print("Using device:", self.device)
@@ -122,7 +122,7 @@ def train(agent, env, nb_epsiode=100, save_model=True, render=False):
                 env.save_current_state_images('img_state', t_steps)
                 print(f'loss at ts {t_steps} : {loss}')
             # save network weights
-            if save_model==True and t_steps % 100000 == 0:
+            if save_model==True and t_steps % 200_000 == 0:
                 model_save_path = f'dqn_breakout_q_network_{t_steps}.pth'
                 torch.save(agent.q_network.state_dict(), model_save_path)
             # update target network        
@@ -165,13 +165,13 @@ def test(agent, pth_path, env, save_video=False, render=True):
 if __name__ == '__main__':
     
     # Initialize the Breakout environment
-    env = gym.make('BreakoutNoFrameskip-v4')
+    env = gym.make('BreakoutNoFrameskip-v4', render_mode='human')
     env = BreakoutWrapper(env)
      
     # Initialize the DQN agent
     agent = DQNAgent()
     # Train DQL
-    train(agent,env, nb_epsiode=30000, render=False)
+    train(agent,env, nb_epsiode=30_000, render=False)
 
     #%% To see the evolution of the states from 1 to ... n
     done = agent.memory.done

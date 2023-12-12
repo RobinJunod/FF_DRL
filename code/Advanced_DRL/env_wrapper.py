@@ -28,6 +28,10 @@ class BreakoutWrapper(gym.Wrapper):
             state: return the custom state
         """
         self.env.reset()
+        # Play a rnd number of nothing before starting in order to create rnd init
+        no_op_steps = np.random.randint(1, 31)  # Randomly choose the number of "do nothing" steps (1 to 30)
+        for _ in range(no_op_steps):
+            self.env.step(0) # do nothing
         obs, _, _, _, info = self.env.step(1)  # Fire to start new episode
         self.pp_obs = self.preprocess(obs)
         return self.pp_obs, info
@@ -46,7 +50,7 @@ class BreakoutWrapper(gym.Wrapper):
         for _ in range(2): # play 2 time the same action
             obs, reward_, terminated, truncated, info = self.env.step(action)
             rem_lives = info['lives']
-            reward = reward_
+            reward += reward_
 
         if rem_lives< 5:
             terminated = True
@@ -81,14 +85,7 @@ class BreakoutWrapper(gym.Wrapper):
         # Convert to boolean (0 or 1)
         threshold_value = 0.1 # Set your threshold value here
         image = (np.array(image) / 255.0 > threshold_value).astype(bool)
-        #image = image.astype(bool)
-        #preprocess = T.Compose([T.ToPILImage(), 
-        #                        self._custom_crop,
-        #                        T.Resize((84, 84)), 
-        #                        T.Grayscale(), 
-        #                        T.ToTensor(),
-        #                        lambda x: x.squeeze() # Squeeze the extra dimension
-        #                        ])
+
         return image
 
 
