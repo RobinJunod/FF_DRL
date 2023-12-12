@@ -14,22 +14,23 @@ import matplotlib.pyplot as plt
 from collections import deque
 from model import QNetwork
 from env_wrapper import BreakoutWrapper
+from replay_memory import MemoryBuffer
 
 # Define the DQN Agent
 class DQNAgent:
     def __init__(self, action_size=3):
         self.action_size = action_size
         # Hyperparameters
-        self.memory = deque(maxlen=500000) # 1'000'000 in paper, rep mem size
+        self.memory = deque(maxlen=500_000) # 1'000'000 in paper, rep mem size
         self.batch_size = 32 
         self.gamma = 0.99
-        self.target_update_freq = 10000
+        self.target_update_freq = 10_000
         self.epsilon = 1.0
         self.epsilon_min = 0.1
-        self.final_exploration_step = 1000000 # 1'000'000 in paper, number step to stop exploring
+        self.final_exploration_step = 1_000_000 # 1'000'000 in paper, number step to stop exploring
         self.epsilon_decay = (1-0.1)/self.final_exploration_step # Linear decay
         self.epsilon_decay_exp = self.epsilon_min**(1/self.final_exploration_step ) # Exponentional decay
-        self.no_learning_steps = 1000
+        self.no_learning_steps = 1_000
         # Deep Neural Network
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # to use gpu
         print("Using device:", self.device)
