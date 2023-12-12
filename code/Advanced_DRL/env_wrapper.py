@@ -43,11 +43,12 @@ class BreakoutWrapper(gym.Wrapper):
             action = 2
         elif action ==2:
             action = 3
-        obs, reward, terminated, truncated, info = self.env.step(action)
-        rem_lives = info['lives']
+        for _ in range(2): # play 2 time the same action
+            obs, reward_, terminated, truncated, info = self.env.step(action)
+            rem_lives = info['lives']
+            reward = reward_
 
         if rem_lives< 5:
-            print(f'agent has lost a life {rem_lives}')
             terminated = True
             reward = -1.0 # pen for losing a life
         
@@ -89,10 +90,6 @@ class BreakoutWrapper(gym.Wrapper):
         #                        lambda x: x.squeeze() # Squeeze the extra dimension
         #                        ])
         return image
-
-    def _custom_crop(self, img):
-        return T.functional.crop(img, top=30, left=10, height=img.size[1] - 30, width=img.size[0] - 20)
-    
 
 
 #%%

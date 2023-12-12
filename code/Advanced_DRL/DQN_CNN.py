@@ -14,15 +14,15 @@ import matplotlib.pyplot as plt
 from collections import deque
 from model import QNetwork
 from env_wrapper import BreakoutWrapper
-from replay_memory import MemoryBuffer
+from replay_memory import ReplayBuffer
 
 # Define the DQN Agent
 class DQNAgent:
-    def __init__(self, action_size=3):
-        self.action_size = action_size
+    def __init__(self):
+        self.action_size = 3
         # Hyperparameters
-        self.memory = deque(maxlen=500_000) # 1'000'000 in paper, rep mem size
-        self.batch_size = 32 
+        self.memory = ReplayBuffer(max_size=1_000_000, stack_size=4) # 1'000'000 in paper, rep mem size
+        self.batch_size = 32
         self.gamma = 0.99
         self.target_update_freq = 10_000
         self.epsilon = 1.0
@@ -34,18 +34,13 @@ class DQNAgent:
         # Deep Neural Network
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # to use gpu
         print("Using device:", self.device)
-        self.q_network = QNetwork(action_size).to(self.device)
-        self.target_q_network = QNetwork(action_size).to(self.device)
+        self.q_network = QNetwork(self.action_size).to(self.device)
+        self.target_q_network = QNetwork(self.action_size).to(self.device)
         self.target_q_network.load_state_dict(self.q_network.state_dict())
         self.target_q_network.eval()
         self.optimizer = optim.Adam(self.q_network.parameters(), lr=5e-4)
         # Loggers
 
-
-
-    def remember(self, state, action, reward, next_state, done):
-        # Append (s,a,r,s') to replay memory
-        self.memory.append((state, action, reward, next_state, done))
 
     def update_target_q_network(self):
         self.target_q_network.load_state_dict(self.q_network.state_dict())
@@ -71,17 +66,10 @@ class DQNAgent:
     
     def optimize_model(self):
         # Here states and next_states are 4 succ img in grey scale
-        if len(self.memory) < self.no_learning_steps:
+        if self.memory.size < self.no_learning_steps:
             return
-        # Get samples from replay memory
-        minibatch = random.sample(self.memory, self.batch_size)
-        states, actions, rewards, next_states, dones = zip(*minibatch)
-        states = torch.stack(states).to(self.device)
-        next_states = torch.stack(next_states).to(self.device)
-        rewards = torch.tensor(rewards, dtype=torch.float32).to(self.device)
-        actions = torch.tensor(actions, dtype=torch.long).to(self.device)
-        dones = torch.tensor(dones, dtype=torch.int).to(self.device)
-        
+        # Get batch sample from memory buffer
+        states, actions, rewards, next_states, dones = self.memory.sample(batch_size=32)
         # Get all the Q values at each states 
         q_values = self.q_network(states)
         # The next Q values are determined by the more stable network (off policy)
@@ -107,25 +95,27 @@ def train(agent, env, nb_epsiode=100, save_model=True, render=False):
     t_steps = 0
     for episode in range(nb_epsiode):
         print('Start episode :', episode)
-        state, _ = env.reset()
-
+        obs, _ = env.reset()
+        # Add the first state to the replay memory
+        agent.memory.remember(obs, 0, 0, True) # a=No-op, r=0, done=False
         total_reward = 0
         done = False
         step = 0
         while not done:
             step += 1
             t_steps += 1
-            #print('state :', state.shape)
+
+            # Extract the state from the replay memory buffer (last obs in memory)
+            state = torch.tensor(agent.memory.get_state(agent.memory.ptr), dtype=torch.float32)
             action = agent.act_egreedy(state) # Agent selects action
             
-            next_state, reward, terminated, truncated, _ = env.step(action)
-            if render:
-                env.render()
+            next_obs, reward, terminated, truncated, _ = env.step(action)
             done = terminated or truncated
             total_reward += reward
 
             # print(f'stacked state{stacked_state.shape}, action{action}, reward{reward}, next {stacked_next_state.shape}, done{done}')
-            agent.remember(state, action, reward, next_state, done)
+            agent.memory.remember(obs, action, reward, done)
+            
             loss = agent.optimize_model()
             # save image of states
             if t_steps % 300000 == 0:
@@ -140,7 +130,8 @@ def train(agent, env, nb_epsiode=100, save_model=True, render=False):
                 agent.update_target_q_network()
                 print(f"Update Target Net : Episode: {episode + 1}, Epsilon: {agent.epsilon}")
             
-            state = next_state
+            obs = next_obs
+            
         print(f'Total Reward over the episode:{total_reward} , Current epsilon : {agent.epsilon}')
     env.close()
     if save_model:
@@ -175,10 +166,15 @@ if __name__ == '__main__':
     
     # Initialize the Breakout environment
     env = gym.make('BreakoutNoFrameskip-v4')
-    env = BreakoutWrapper(env, stack_frames=4)
-    action_size = env.action_space.n
- 
+    env = BreakoutWrapper(env)
+     
     # Initialize the DQN agent
-    agent = DQNAgent(action_size)
+    agent = DQNAgent()
     # Train DQL
     train(agent,env, nb_epsiode=30000, render=False)
+
+    #%% To see the evolution of the states from 1 to ... n
+    done = agent.memory.done
+    done_idx = np.where(done==True)
+    # Interupt the simulation
+    agent.memory.show_state(state=agent.memory.get_state(1))

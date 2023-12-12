@@ -30,14 +30,14 @@ class ReplayBuffer:
         self.size = min(self.size + 1, self.max_size)
 
     def get_state(self, idx):
-        # Get a state by stacking 'stack_size' obs ending at index 'idx'
+        # Get a state by stacking 'stack_size' obs ending at index 'idx', carefull of dones
         idx = (idx + self.size) % self.size  # Handle negative indices
         state = np.zeros((self.stack_size, self.obs_height, self.obs_width), dtype=np.float32)
         for i in range(self.stack_size):
             index = (idx - i) % self.size
             state[self.stack_size - 1 - i] = self.obs[index]
             # Check if the obs at 'index' is the first obs after an episode ended
-            if i != 0 and self.done[index]:
+            if self.done[index]:
                 # If 'done' flag is encountered, repeat the same obs for all previous obs in the stack
                 state[:self.stack_size - 1 - i] = self.obs[index]
                 break
@@ -46,21 +46,21 @@ class ReplayBuffer:
     def sample(self, batch_size=32):
         # Sample a batch of states, actions, rewards, next states, and dones
         indices = np.random.choice(self.size, batch_size, replace=False)
-        #states = np.array([self.get_state(idx) for idx in indices])
-        #next_states = np.array([self.get_state(idx + 1) for idx in indices])
-        #actions = self.action[indices]
-        #rewards = self.reward[indices]
-        #dones = self.done[indices]
-        states = torch.tensor([self.get_state(idx) for idx in indices], dtype=torch.float32)
-        next_states = torch.tensor([self.get_state(idx + 1) for idx in indices], dtype=torch.float32)
-        actions = torch.tensor(self.action[indices], dtype=torch.long)
+        states = np.array([self.get_state(idx) for idx in indices], dtype=np.float32)
+        next_states = np.array([self.get_state(idx + 1) for idx in indices], dtype=np.float32)
+        
+        states = torch.tensor(states, dtype=torch.float32)
+        next_states = torch.tensor(next_states, dtype=torch.float32)
+        actions = torch.tensor(self.action[indices], dtype=torch.int64)
         rewards = torch.tensor(self.reward[indices], dtype=torch.float32)
         dones = torch.tensor(self.done[indices], dtype=torch.float32)
+        
         return states, actions, rewards, next_states, dones
     
-    def show_rnd_state(self):
-        state,_,_,_,_ = self.sample(batch_size=1)
-        state = state.squeeze(0)
+    def show_state(self, state=None):
+        if state is None: # take a rnd state
+            state,_,_,_,_ = self.sample(batch_size=1)
+            state = state.squeeze(0)
         fig, axes = plt.subplots(1, 4, figsize=(16, 4))
         for i in range(4):
             axes[i].imshow(state[i, :, :], cmap='gray')
@@ -77,7 +77,7 @@ if __name__ == '__main__':
     env = BreakoutWrapper(env)
     obs, info = env.reset()
     memory = ReplayBuffer(max_size=1_000)
-
+    #%%
     for _ in range(100):
         obs, reward, terminated, truncated, info = env.step(0)
         done = terminated or truncated
