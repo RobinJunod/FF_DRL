@@ -47,17 +47,18 @@ class BreakoutWrapper(gym.Wrapper):
             action = 2
         elif action ==2:
             action = 3
+        rewards = 0
         for _ in range(2): # play 2 time the same action
-            obs, reward_, terminated, truncated, info = self.env.step(action)
+            obs, reward, terminated, truncated, info = self.env.step(action)
             rem_lives = info['lives']
-            reward += reward_
+            rewards += reward
 
         if rem_lives< 5:
             terminated = True
             reward = -1.0 # pen for losing a life
         
         self.pp_obs = self.preprocess(obs)
-        return self.pp_obs, reward, terminated, truncated, info
+        return self.pp_obs, rewards, terminated, truncated, info
 
             
     def show_current_obs(self):
