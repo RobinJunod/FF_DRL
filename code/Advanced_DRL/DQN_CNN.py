@@ -4,6 +4,7 @@ import time
 
 import random
 import numpy as np
+import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -21,21 +22,21 @@ class DQNAgent:
     def __init__(self):
         self.action_size = 3
         # Hyperparameters
-        self.memory = ReplayBuffer(max_size=1_000_000, stack_size=4) # 1'000'000 in paper, rep mem size
+        self.memory = ReplayBuffer(max_size=100_000, stack_size=4) # 1'000'000 in paper, rep mem size
         self.batch_size = 32
         self.gamma = 0.99
-        self.target_update_freq = 10_000
+        self.target_update_freq = 7_000
         self.epsilon = 1.0
         self.epsilon_min = 0.1
-        self.final_exploration_step = 1_000_000 # 1'000'000 in paper, number step to stop exploring
+        self.final_exploration_step = 500_000 # 1'000'000 in paper, number step to stop exploring
         self.epsilon_decay = (1-0.1)/self.final_exploration_step # Linear decay
         self.epsilon_decay_exp = self.epsilon_min**(1/self.final_exploration_step ) # Exponentional decay
         self.no_learning_steps = 10_000
         # Deep Neural Network
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # to use gpu
-        print("Using device:", self.device)
-        self.q_network = QNetwork(self.action_size).to(self.device)
-        self.target_q_network = QNetwork(self.action_size).to(self.device)
+        #self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # to use gpu
+        
+        self.q_network = QNetwork(self.action_size)
+        self.target_q_network = QNetwork(self.action_size)
         self.target_q_network.load_state_dict(self.q_network.state_dict())
         self.target_q_network.eval()
         self.optimizer = optim.Adam(self.q_network.parameters(), lr=5e-4)
@@ -59,7 +60,7 @@ class DQNAgent:
         
     def act(self, state):
         # Has to Convert to (N, C, H, W), only format handled by conv2d        
-        state = state.unsqueeze(0).to(self.device)
+        state = state.unsqueeze(0)
         q_values = self.q_network(state)
         action = torch.argmax(q_values).item()
         return action
@@ -79,20 +80,25 @@ class DQNAgent:
         # Select the Q values of the actions taken
         q_values = q_values.gather(1, actions.view(-1, 1))
         # Compute the loss from the q values differences (the prediction and the target) (2-arrays of length 32 (batch-size))
-        loss = F.smooth_l1_loss(q_values, target_q_values.view(-1, 1)).to(self.device)
-
+        # loss = F.smooth_l1_loss(q_values, target_q_values.view(-1, 1))
+        # loss = F.mse_loss(q_values, target_q_values.view(-1, 1))
+        loss = F.smooth_l1_loss(q_values, target_q_values.view(-1, 1))
         # Optimization using basic pytorch code
         self.optimizer.zero_grad()
         loss.backward()
+        # Clip gradients
+        torch.nn.utils.clip_grad_norm_(self.q_network.parameters(), max_norm=1.0)
         self.optimizer.step()
         # Decrease the epsilon
         self.epsilon = max(self.epsilon_min, self.epsilon - self.epsilon_decay) # lin decay
         #self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay_exp) # exp decay
         return loss.item()
 
-def train(agent, env, nb_epsiode=100, save_model=True, render=False):
+def train(agent, env, nb_epsiode=100, save_model=True):
     
     t_steps = 0
+    max_rew = 0 
+    logs = pd.DataFrame(columns=['rew', 'max', 'ep'])
     for episode in range(nb_epsiode):
         print('Start episode :', episode)
         obs, _ = env.reset()
@@ -112,30 +118,38 @@ def train(agent, env, nb_epsiode=100, save_model=True, render=False):
             next_obs, reward, terminated, truncated, _ = env.step(action)
             done = terminated or truncated
             total_reward += reward
-
-            # print(f'stacked state{stacked_state.shape}, action{action}, reward{reward}, next {stacked_next_state.shape}, done{done}')
+            # Adding s a r d to memory buffer
             agent.memory.remember(obs, action, reward, done)
-            
             loss = agent.optimize_model()
-            # save image of states
-            if t_steps % 300000 == 0:
-                env.save_current_state_images('img_state', t_steps)
-                print(f'loss at ts {t_steps} : {loss}')
-            # save network weights
-            if save_model==True and t_steps % 200_000 == 0:
-                model_save_path = f'dqn_breakout_q_network_{t_steps}.pth'
-                torch.save(agent.q_network.state_dict(), model_save_path)
+            
+            obs = next_obs
             # update target network        
             if t_steps % agent.target_update_freq == 0:
                 agent.update_target_q_network()
                 print(f"Update Target Net : Episode: {episode + 1}, Epsilon: {agent.epsilon}")
-            
-            obs = next_obs
-            
-        print(f'Total Reward over the episode:{total_reward} , Current epsilon : {agent.epsilon}')
-    env.close()
+                print(f'Loss at ts {t_steps} : {loss}')
+                print(f'Save img state {t_steps}')
+                agent.memory.save_state_img(state_i=t_steps)
+
+            # save network weights
+            if save_model==True and t_steps % 200_000 == 0:
+                model_save_path = f'dqn_breakout_q_network_{t_steps}.pth'
+                torch.save(agent.q_network.state_dict(), model_save_path)
+        
+         
+        if total_reward > max_rew:
+            max_rew = total_reward
+        #agent.memory.show_state()
+        print(f'Reward episode:{total_reward}, max rew :{max_rew} ,  epsilon : {agent.epsilon}')
+        new_row = {'rew': [total_reward], 
+                    'max': [max_rew], 
+                    'ep': [agent.epsilon]}
+        logs.loc[len(logs)] = new_row
+        logs.to_csv('logs.csv', index=False)
+
     if save_model:
         torch.save(agent.q_network.state_dict(), 'dqn_breakout_q_network.pth')
+    env.close()
     
 
 def test(agent, pth_path, env, save_video=False, render=True):
@@ -161,20 +175,31 @@ def test(agent, pth_path, env, save_video=False, render=True):
             state = next_state
         print(f'Total Reward for testing episode {episode}: {total_reward}')
     env.close()
-    
+
+#%%   
 if __name__ == '__main__':
     
     # Initialize the Breakout environment
-    env = gym.make('BreakoutNoFrameskip-v4', render_mode='human')
+    #env = gym.make('BreakoutDeterministic-v4')
+    #env = gym.make('ALE/Breakout-v5')
+    env = gym.make('BreakoutNoFrameskip-v4')
     env = BreakoutWrapper(env)
-     
+
     # Initialize the DQN agent
     agent = DQNAgent()
     # Train DQL
-    train(agent,env, nb_epsiode=30_000, render=False)
+    train(agent,env, nb_epsiode=30_000, save_model=True)
 
-    #%% To see the evolution of the states from 1 to ... n
-    done = agent.memory.done
-    done_idx = np.where(done==True)
-    # Interupt the simulation
-    agent.memory.show_state(state=agent.memory.get_state(1))
+    print('THE TRAINING HAS BEEN DONE, LETS SEE THE RESULTS')
+    ##%% To see the evolution of the states from 1 to ... n
+    #done = agent.memory.done
+    #done_idx = np.where(done==True)
+    ## Interupt the simulation
+    #agent.memory.show_state(state=agent.memory.get_state(1))
+    
+    #%%
+    env2 = gym.make('BreakoutNoFrameskip-v4')
+    env2 = BreakoutWrapper(env2)
+    agent2 = DQNAgent()
+    pth_path = 'dqn_breakout_q_network_3000000.pth'
+    test(agent2, pth_path, env2, save_video=False, render=True)
