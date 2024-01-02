@@ -1,4 +1,4 @@
-#%%
+ #%%
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -67,6 +67,17 @@ class ReplayBuffer:
             axes[i].axis('off')
             axes[i].set_title(f'Frame {i + 1}')
         plt.show()
+        
+    def save_state_img(self, state_i = None):
+        state = self.get_state(state_i)
+        fig, axes = plt.subplots(1, 4, figsize=(16, 4))
+        for i in range(4):
+            axes[i].imshow(state[i, :, :], cmap='gray')
+            axes[i].axis('off')
+            axes[i].set_title(f'Frame {i + 1}')
+        plt.savefig(f'models/img/state{state_i}.png')
+        
+        
 #%%
 
 if __name__ == '__main__':
