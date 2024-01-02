@@ -14,7 +14,7 @@ class Layer(nn.Linear):
         super().__init__(in_features, out_features, bias, device, dtype)
         self.relu = torch.nn.ReLU()
         self.opt = torch.optim.Adam(self.parameters(), lr=0.03)
-        self.threshold = 3.0
+        self.threshold = 2.0
     
     def forward(self, x):
         """Forward function that takes a set of points (matrix) as input
@@ -74,7 +74,7 @@ class Net(torch.nn.Module):
         for d in range(len(dims) - 1):
             self.layers += [Layer(dims[d], dims[d + 1])]
             
-    def train(self, x_pos, x_neg, num_epochs):
+    def train_L(self, x_pos, x_neg, num_epochs):
         """ Train network with forward-forward one layer at a time
         Args:
             x_pos (matrix of datapoints): positive data
@@ -85,6 +85,21 @@ class Net(torch.nn.Module):
         for i, layer in enumerate(self.layers):
             print('training layer', i, '...')
             h_pos, h_neg = layer.train(h_pos, h_neg, num_epochs)
+    
+    def train_B(self, x_pos, x_neg, num_epochs):
+        """ Train network with forward-forward one batch at a time.
+        Args:
+            x_pos (matrix of datapoints): positive data
+            x_neg (matrix of datapoints): negative data
+            num_epochs (int): number of epochs
+        """
+        for epoch in range(num_epochs):
+            h_pos, h_neg = x_pos, x_neg
+            if epoch%10==0:
+                print(f'training epoch : {epoch}')
+            for i, layer in enumerate(self.layers):
+                # print('training layer', i, '...')
+                h_pos, h_neg = layer.train(h_pos, h_neg, 1) # pass one time on each layers
             
     def predict(self, x, Display=False):
         """Return the goodness of a given input

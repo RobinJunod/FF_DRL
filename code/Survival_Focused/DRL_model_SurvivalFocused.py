@@ -15,11 +15,11 @@ from FF_network import Net
 
 def DRL_train_network(env, ff_net, cell=False, **kwargs):
     if cell:
-        memory_capacity =10000
-        num_episodes=200
+        memory_capacity =10_000
+        num_episodes=3000
         num_epochs=50
         epsilon_start=1
-        epsilon_decay=0.995
+        epsilon_decay=0.99
         epsilon_end=0.1
         theta_start=5
         theta_decay=1.05
@@ -116,8 +116,6 @@ def DRL_train_network(env, ff_net, cell=False, **kwargs):
         
         episode_memory.clear() # clear the memory of the past episode
         
-                
-        
         if replay_memory_positive and replay_memory_negative:
             # Selecting k random sample in neg memory data
             neg_selection = random.choices(replay_memory_negative, k=256)
@@ -131,10 +129,16 @@ def DRL_train_network(env, ff_net, cell=False, **kwargs):
         
         # Train the net if their is enough data
         if pos_selection and neg_selection:
-            print('--------------start the training-----------------')
-            #print('replay pos mem list :',[len(inner_list) for inner_list in replay_memory_positive_list])
-            #print('replay neg mem list :',[len(inner_list) for inner_list in replay_memory_negative_list])
-            ff_net.train(x_pos,x_neg, num_epochs=num_epochs)
+            #ff_train_type = 'LAYERS'
+            ff_train_type = 'LAYERS'
+            print(f'--------------start the training {ff_train_type}-----------------')
+            # Select the type of training (details for experimentation, bio plaisible vs more logical one)
+            if ff_train_type == 'LAYERS':
+
+                ff_net.train_L(x_pos,x_neg, num_epochs=num_epochs) # training layers by layers
+            elif ff_train_type == 'BATCHES':
+                ff_net.train_B(x_pos,x_neg, num_epochs=num_epochs) # training batches, passing data trough all layers first
+            
        
         
         # Log graph and plot outputs
@@ -195,11 +199,12 @@ if __name__ == '__main__':
     parser.add_argument("--num_episodes", type=int, default=200, help="Input file path")
     parser.add_argument("--num_epochs", type=int, default=50, help="Output file path")
     parser.add_argument("--epsilon_start", type=int, default=1, help="Epsilon greedy start")
-    parser.add_argument("--epsilon_decay", type=float, default=0.995, help="Epsilon greedy decay value after each episode")
+    #parser.add_argument("--epsilon_decay", type=float, default=0.1**(1/1_500), help="Epsilon greedy decay value after each episode")
     parser.add_argument("--epsilon_end", type=int, default=0.1, help="Epsilon greedy end")
     parser.add_argument("--theta_start", type=int, default=5, help="theta, the death horizon start")
-    parser.add_argument("--theta_decay", type=float, default=1.05, help="theta, the death horizon decay value after each episode")
+    #parser.add_argument("--theta_decay", type=float, default=1.05, help="theta, the death horizon decay value after each episode")
     parser.add_argument("--theta_end", type=int, default=25, help="theta, the death horizon end")
+    parser.add_argument("--train_e", type=bool, default=False, help="theta, the death horizon end")
     # Parse the command-line arguments
     args = parser.parse_args()
 
@@ -209,22 +214,23 @@ if __name__ == '__main__':
         "num_episodes": args.num_episodes,
         "num_epochs": args.num_epochs,
         "epsilon_start": args.epsilon_start,
-        "epsilon_decay": args.epsilon_decay,
+        "epsilon_decay": 0.1**(1/1_500),
         "epsilon_end": args.epsilon_end,
         "theta_start": args.theta_start,
-        "theta_decay": args.theta_decay,
+        "theta_decay": (args.theta_end/args.theta_start)**(1/1_500),
         "theta_end": args.theta_end,
+        "train_e": args.train_e,
     }
-    ##%% To use for cell running
+    #%% To use for cell running
     #arguments = {
-    #    "memory_capacity":10000,
-    #    "num_episodes":200,
-    #    "num_epochs":50,
+    #    "memory_capacity":10_000,
+    #    "num_episodes":3_000,
+    #    "num_epochs":100,
     #    "epsilon_start":1,
-    #    "epsilon_decay":0.995,
+    #    "epsilon_decay":0.1**(1/1_500),
     #    "epsilon_end":0.1,
-    #    "theta_start":5,
-    #    "theta_decay":1.05,
+    #    "theta_start":25,
+    #    "theta_decay":(5/25)**(1/1_500),
     #    "theta_end":5,
     #}
     
@@ -236,22 +242,22 @@ if __name__ == '__main__':
     ff_net =  Net([input_size, 50, 20, 20])
     ff_net_trained, logs = DRL_train_network(env, ff_net, **arguments)
     
-    #%% Play
-    env_test = gym.make('CartPole-v1', render_mode='rgb_array_list')  
-    test_policy(env_test, ff_net_trained, save_vid=True)
+
     
     #%% Plot the logs
     reward_evolution, exploration_rate_evolution = logs
     
     # Saving the experiment
     csv_file = f'config_{args.memory_capacity}_{args.num_episodes}_{args.theta_start}_{args.theta_end}.csv'
-    # Create a Pandas DataFrame from the lists
+    #%% Create a Pandas DataFrame from the lists
     df1 = pd.DataFrame(reward_evolution, columns=['episode_R', 'Reward Evolution'])
     df2 = pd.DataFrame(exploration_rate_evolution, columns=['episode_E', 'Exploration Evolution'])
     # Save the DataFrames to a CSV file
-    df1.to_csv('../../results/SF_experiments/reward_'+csv_file, index=False)
-    df2.to_csv('../../results/SF_experiments/explo_'+csv_file, index=False)
+    df1.to_csv('../../results/SF_experiments/reward_B_'+csv_file, index=False)
+    df2.to_csv('../../results/SF_experiments/explo_B_'+csv_file, index=False)
     
     print(f'Data saved to {csv_file}')
 
-
+    #%% Play
+    #env_test = gym.make('CartPole-v1', render_mode='rgb_array_list')  
+    #test_policy(env_test, ff_net_trained, save_vid=True)
