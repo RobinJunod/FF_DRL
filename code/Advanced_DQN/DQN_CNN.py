@@ -21,7 +21,7 @@ class DQNAgent:
     def __init__(self):
         self.action_size = 3
         # Hyperparameters
-        self.memory = ReplayBuffer(max_size=200_000, stack_size=4) # 1'000'000 in paper, rep mem size
+        self.memory = ReplayBuffer(max_size=10_000, stack_size=4) # 1'000'000 in paper, rep mem size
         self.batch_size = 32
         self.gamma = 0.99
         self.target_update_freq = 1_000
@@ -102,7 +102,7 @@ def train(agent, env, nb_epsiode=100, save_model=True):
     for episode in range(nb_epsiode):
         print('Start episode :', episode)
         obs, _ = env.reset()
-        # Add the first state to the replay memory
+        # Add the first state to the replay memory TODO : verify if good
         agent.memory.remember(obs, 0, 0, True) # a=No-op, r=0, done=False
         total_reward = 0
         done = False
@@ -119,11 +119,11 @@ def train(agent, env, nb_epsiode=100, save_model=True):
             next_obs, reward, terminated, truncated, _ = env.step(action)
             done = terminated or truncated
             total_reward += reward
-            # Adding s a r d to memory buffer
-            agent.memory.remember(obs, action, reward, done)
+            # Adding s a r d to memory buffer #TODO:verify if good next_obs - obs
+            agent.memory.remember(next_obs, action, reward, done)
             loss = agent.optimize_model()
             
-            obs = next_obs
+            # obs = next_obs TODO: verify if good
             # update target network        
             if t_steps % agent.target_update_freq == 0:
                 agent.update_target_q_network()

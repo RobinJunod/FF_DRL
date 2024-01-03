@@ -39,13 +39,13 @@ class BreakoutWrapper(gym.Wrapper):
     def step(self, action):
         """Wrapper of the step method
         Args:
-            action (): can take discret values 1,2,3 (noop, RIGHT, LEFT)
+            action (): can take discret values 0,1,2 (noop, RIGHT, LEFT)
         Returns:
             tuple: custom state, reward, term, trunc, info
         """
         if action == 1:
-            action = 2
-        elif action ==2:
+            action = 2 # change it to match the env
+        elif action == 2:
             action = 3
         #rewards = 0
         #for _ in range(2): # play 2 time the same action
