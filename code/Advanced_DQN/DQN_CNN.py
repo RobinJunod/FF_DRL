@@ -21,12 +21,12 @@ class DQNAgent:
     def __init__(self):
         self.action_size = 3
         # Hyperparameters
-        self.memory = ReplayBuffer(max_size=100_000, stack_size=4) # 1'000'000 in paper, rep mem size
+        self.memory = ReplayBuffer(max_size=200_000, stack_size=4) # 1'000'000 in paper, rep mem size
         self.batch_size = 32
         self.gamma = 0.99
         self.target_update_freq = 1_000
         self.epsilon = 1.0
-        self.epsilon_min = 0.1
+        self.epsilon_min = 0.01
         self.final_exploration_step = 500_000 # 1'000'000 in paper, number step to stop exploring
         self.epsilon_decay = (1-0.1)/self.final_exploration_step # Linear decay
         self.epsilon_decay_exp = self.epsilon_min**(1/self.final_exploration_step ) # Exponentional decay
@@ -38,7 +38,7 @@ class DQNAgent:
         self.target_q_network = QNetwork(self.action_size)
         self.target_q_network.load_state_dict(self.q_network.state_dict())
         self.target_q_network.eval()
-        self.optimizer = optim.Adam(self.q_network.parameters(), lr=5e-4)
+        self.optimizer = optim.Adam(self.q_network.parameters(), lr=1e-4)
         # Loggers
 
 
@@ -58,11 +58,12 @@ class DQNAgent:
             return self.act(state)
         
     def act(self, state):
-        # Has to Convert to (N, C, H, W), only format handled by conv2d        
-        state = state.unsqueeze(0)
-        q_values = self.q_network(state)
-        action = torch.argmax(q_values).item()
-        return action
+        with torch.no_grad():
+            # Has to Convert to (N, C, H, W), only format handled by conv2d        
+            state = state.unsqueeze(0)
+            q_values = self.q_network(state)
+            action = torch.argmax(q_values).item()
+            return action
     
     def optimize_model(self):
         # Here states and next_states are 4 succ img in grey scale
@@ -81,12 +82,12 @@ class DQNAgent:
         # Compute the loss from the q values differences (the prediction and the target) (2-arrays of length 32 (batch-size))
         # loss = F.smooth_l1_loss(q_values, target_q_values.view(-1, 1))
         # loss = F.mse_loss(q_values, target_q_values.view(-1, 1))
-        loss = F.smooth_l1_loss(q_values, target_q_values.view(-1, 1))
+        loss = F.l1_loss(q_values, target_q_values.view(-1, 1))
         # Optimization using basic pytorch code
         self.optimizer.zero_grad()
         loss.backward()
         # Clip gradients
-        torch.nn.utils.clip_grad_norm_(self.q_network.parameters(), max_norm=1.0)
+        # torch.nn.utils.clip_grad_norm_(self.q_network.parameters(), max_norm=1.0)
         self.optimizer.step()
         # Decrease the epsilon
         self.epsilon = max(self.epsilon_min, self.epsilon - self.epsilon_decay) # lin decay
@@ -111,7 +112,8 @@ def train(agent, env, nb_epsiode=100, save_model=True):
             t_steps += 1
 
             # Extract the state from the replay memory buffer (last obs in memory)
-            state = torch.tensor(agent.memory.get_state(agent.memory.ptr), dtype=torch.float32)
+            # Debugging .ptr-1 is crucial
+            state = torch.tensor(agent.memory.get_state(agent.memory.ptr - 1), dtype=torch.float32)
             action = agent.act_egreedy(state) # Agent selects action
             
             next_obs, reward, terminated, truncated, _ = env.step(action)
@@ -127,6 +129,7 @@ def train(agent, env, nb_epsiode=100, save_model=True):
                 agent.update_target_q_network()
                 print(f"Update Target Net : Episode: {episode + 1}, Epsilon: {agent.epsilon}")
                 print(f'Loss at ts {t_steps} : {loss}')
+
             # save network weights
             if save_model==True and t_steps % 200_000 == 0:
                 model_save_path = f'dqn_breakout_q_network_{t_steps}.pth'
@@ -184,7 +187,7 @@ if __name__ == '__main__':
     # Initialize the DQN agent
     agent = DQNAgent()
     # Train DQL
-    train(agent,env, nb_epsiode=30_000, save_model=True)
+    train(agent,env, nb_epsiode=25_000, save_model=True)
 
     print('THE TRAINING HAS BEEN DONE, LETS SEE THE RESULTS')
     ##%% To see the evolution of the states from 1 to ... n
@@ -194,8 +197,8 @@ if __name__ == '__main__':
     #agent.memory.show_state(state=agent.memory.get_state(1))
     
     #%%
-    env2 = gym.make('BreakoutNoFrameskip-v4')
-    env2 = BreakoutWrapper(env2)
-    agent2 = DQNAgent()
-    pth_path = 'dqn_breakout_q_network_3000000.pth'
-    test(agent2, pth_path, env2, save_video=False, render=True)
+    #env2 = gym.make('BreakoutNoFrameskip-v4')
+    #env2 = BreakoutWrapper(env2)
+    #agent2 = DQNAgent()
+    #pth_path = 'dqn_breakout_q_network_3000000.pth'
+    #test(agent2, pth_path, env2, save_video=False, render=True)

@@ -55,7 +55,7 @@ class BreakoutWrapper(gym.Wrapper):
 
         if rem_lives < 5:
             terminated = True
-            rewards = -1.0 # pen for losing a life
+            reward = -0.1 # pen for losing a life
         
         self.pp_obs = self.preprocess(obs)
         return self.pp_obs, reward, terminated, truncated, info
