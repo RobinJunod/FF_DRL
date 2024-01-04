@@ -255,6 +255,8 @@ class LinearClassification(nn.Module):
         return accuracy
         
     def train(self, data_loader,epochs=20):
+        evol_acc = []
+        evol_loss = []
         ohe = OneHotEncoder().fit(np.arange(10).reshape((10,1))) 
         for epoch in tqdm(range(epochs), desc="Training Linear Classifier"):
             batch_loss = []
@@ -275,7 +277,10 @@ class LinearClassification(nn.Module):
                 batch_accuracy.append(float(accuracy))
             self.epoch_acc.append(float(sum(batch_accuracy)/len(batch_accuracy)))
             self.epoch_loss.append(float(sum(batch_loss)/len(batch_loss)))
-            
+            evol_acc.append(batch_accuracy)
+            evol_loss.append(batch_loss)
+        return evol_acc, evol_loss
+    
     def test(self, data_loader):
         batch_loss = []
         batch_accuracy = []
@@ -295,7 +300,7 @@ class LinearClassification(nn.Module):
         test_accuracy = float(sum(batch_accuracy)/len(batch_accuracy))
         return test_loss,test_accuracy
 
-# Test the FF Conv method on the mnist dataset
+#%% Test the FF Conv method on the mnist dataset
 if __name__=='__main__':
     batchsize = 1024
     learning_rate = 0.03
@@ -312,13 +317,13 @@ if __name__=='__main__':
     
     FF_feature_extractor = FFConvNet()
 
-    #%% Trainig method 1 
     """
     There are two approaches for batch training:
     0. Train batches for all layers. ---> straigth forward
     1. Train batches for each layer. ---> need to create new batches for next layer input
     We use 1 for the following two training methods.
     """
+    # Training the FEATURE EXTRACTOR
     for epoch in range(epochs):
         epoch_loss_mean = 0
         for i, data in enumerate(train_loader, 0):
@@ -331,54 +336,53 @@ if __name__=='__main__':
             epoch_loss_mean = (i*epoch_loss_mean + loss)/(i+1)
             
         print(f'Loss mean of the epoch {epoch_loss_mean}')
-    
     #feature_extractor_output = FF_feature_extractor.respresentation_vects(next(iter(train_loader))[0]).shape[1] # With current feature extractor
     feature_extractor_output = 3440 # With current feature extractor
-    #%% Training method 1 Linear classifier
-    Linear_classifier = LinearClassification(FF_feature_extractor, input_dimension=feature_extractor_output)
-    Linear_classifier.train(train_loader, epochs=10)
     
+    # Training the CLASSIFIER LAYER
+    Linear_classifier = LinearClassification(FF_feature_extractor, input_dimension=feature_extractor_output)
+    logs = Linear_classifier.train(train_loader, epochs=10)
+    epoch_acc, epoch_loss = logs 
+    #%%
     test_loss,test_acc = Linear_classifier.test(test_loader)
     print("Test Loss: ",test_loss)
     print("Test Accuracy: ",test_acc)
     
-    #%% Trainig method second idea
-    """
-    There are two approaches for batch training:
-    1. Train batches for each layer. ---> need to create new batches for next layer input
-    This method needs more memory capacity
-    """
-    for i, data in enumerate(train_loader, 0):
-        inputs, labels = data
-        #print(f'batch training number {i} / {len(train_loader)}')
-        x_pos = inputs
-        x_neg = negative_data_gen(inputs)
-        loss = FF_feature_extractor.train(x_pos, x_neg)
-    
-    epoch_loss_mean = (i*epoch_loss_mean + loss)/(i+1)
-    
-    print(f'Loss mean of the epoch {epoch_loss_mean}')
-
-
-    #%% test model
-    avg_accruacy = 0
-    i = -1
-    for _, data in enumerate(test_loader, 0):
-        i += 1
-        inputs, labels = data
-        x_pos = inputs
-        x_neg = negative_data_gen(inputs)
-        
-        avg_accruacy = (i*avg_accruacy + (FF_feature_extractor.conv1.goodness(x_pos)>0).sum()/len(FF_feature_extractor.conv1.goodness(x_pos)))/(i+1)
-        
-        print(f'accruacy of the pos data {(FF_feature_extractor.conv1.goodness(x_pos)>0).sum()/len(FF_feature_extractor.conv1.goodness(x_pos))}')
-        print(f'accruacy of the neg data {(FF_feature_extractor.conv1.goodness(x_neg)<0).sum()/len(FF_feature_extractor.conv1.goodness(x_neg))}')
-        
-    print(f'Average accruacy : {avg_accruacy}')
-# %%
-    # Save the model after training
-    model.save_model()
-    # Loading the model
-    loaded_model = FFConvNet()
-    loaded_model.load_state_dict(torch.load('ffconvnet_model.pth'))
-    loaded_model.eval() 
+    ##%% Trainig method second idea
+    #"""
+    #There are two approaches for batch training:
+    #1. Train batches for each layer. ---> need to create new batches for next layer input
+    #This method needs more memory capacity
+    #"""
+    #for i, data in enumerate(train_loader, 0):
+    #    inputs, labels = data
+    #    #print(f'batch training number {i} / {len(train_loader)}')
+    #    x_pos = inputs
+    #    x_neg = negative_data_gen(inputs)
+    #    loss = FF_feature_extractor.train(x_pos, x_neg)
+    #
+    #epoch_loss_mean = (i*epoch_loss_mean + loss)/(i+1)
+    #
+    #print(f'Loss mean of the epoch {epoch_loss_mean}')
+    ##%% test model
+    #avg_accruacy = 0
+    #i = -1
+    #for _, data in enumerate(test_loader, 0):
+    #    i += 1
+    #    inputs, labels = data
+    #    x_pos = inputs
+    #    x_neg = negative_data_gen(inputs)
+    #    
+    #    avg_accruacy = (i*avg_accruacy + (FF_feature_extractor.conv1.goodness(x_pos)>0).sum()/len(FF_feature_extractor.conv1.goodness(x_pos)))/(i+1)
+    #    
+    #    print(f'accruacy of the pos data {(FF_feature_extractor.conv1.goodness(x_pos)>0).sum()/len(FF_feature_extractor.conv1.goodness(x_pos))}')
+    #    print(f'accruacy of the neg data {(FF_feature_extractor.conv1.goodness(x_neg)<0).sum()/len(FF_feature_extractor.conv1.goodness(x_neg))}')
+    #    
+    #print(f'Average accruacy : {avg_accruacy}')
+    # %%
+    ## Save the model after training
+    #model.save_model()
+    ## Loading the model
+    #loaded_model = FFConvNet()
+    #loaded_model.load_state_dict(torch.load('ffconvnet_model.pth'))
+    #loaded_model.eval() 

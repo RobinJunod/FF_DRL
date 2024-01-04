@@ -21,7 +21,7 @@ class DQNAgent:
     def __init__(self):
         self.action_size = 3
         # Hyperparameters
-        self.memory = ReplayBuffer(max_size=10_000, stack_size=4) # 1'000'000 in paper, rep mem size
+        self.memory = ReplayBuffer(max_size=200_000, stack_size=4) # 1'000'000 in paper, rep mem size
         self.batch_size = 32
         self.gamma = 0.99
         self.target_update_freq = 1_000
@@ -158,20 +158,23 @@ def test(agent, pth_path, env, save_video=False, render=True):
     t_steps = 0
     for episode in range(10):  # You can adjust the number of episodes for testing
         print('Start testing episode:', episode)
-        state, _ = env.reset()
+        obs, _ = env.reset()
+        agent.memory.remember(obs, 0, 0, True)
         total_reward = 0
         done = False
         step = 0
         while not done:
             step += 1
             t_steps += 1
+            state = torch.tensor(agent.memory.get_state(agent.memory.ptr - 1), dtype=torch.float32)
             action = agent.act(state)
             next_state, reward, terminated, truncated, _ = env.step(action)
-            if render:
-                env.render()
             done = terminated or truncated
             total_reward += reward
-            state = next_state
+            agent.memory.remember(next_state, reward, action, done)
+            if render:
+                env.render()
+                
         print(f'Total Reward for testing episode {episode}: {total_reward}')
     env.close()
 
@@ -189,16 +192,9 @@ if __name__ == '__main__':
     # Train DQL
     train(agent,env, nb_epsiode=25_000, save_model=True)
 
-    print('THE TRAINING HAS BEEN DONE, LETS SEE THE RESULTS')
-    ##%% To see the evolution of the states from 1 to ... n
-    #done = agent.memory.done
-    #done_idx = np.where(done==True)
-    ## Interupt the simulation
-    #agent.memory.show_state(state=agent.memory.get_state(1))
-    
-    #%%
-    #env2 = gym.make('BreakoutNoFrameskip-v4')
-    #env2 = BreakoutWrapper(env2)
-    #agent2 = DQNAgent()
-    #pth_path = 'dqn_breakout_q_network_3000000.pth'
-    #test(agent2, pth_path, env2, save_video=False, render=True)
+    #%% Cell to run the test mode / inference
+    # env2 = gym.make('BreakoutNoFrameskip-v4', render_mode='human')
+    # env2 = BreakoutWrapper(env2)
+    # agent2 = DQNAgent()
+    # pth_path = 'data/model_weight_pth/dqn_breakout_q_network_600000.pth'
+    # test(agent2, pth_path, env2, save_video=False, render=True)

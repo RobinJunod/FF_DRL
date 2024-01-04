@@ -1,5 +1,4 @@
 code/Advanced_DRL/data**
 *.pyc
-*.pth
 *.gz
 *.csv
