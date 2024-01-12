@@ -223,6 +223,8 @@ class LinearClassification(nn.Module):
         return accuracy
         
     def train(self, data_loader,epochs=20):
+        evol_acc = []
+        evol_loss = []
         ohe = OneHotEncoder().fit(np.arange(10).reshape((10,1))) 
         for epoch in tqdm(range(epochs), desc="Training Linear Classifier"):
             batch_loss = []
@@ -243,7 +245,10 @@ class LinearClassification(nn.Module):
                 batch_accuracy.append(float(accuracy))
             self.epoch_acc.append(float(sum(batch_accuracy)/len(batch_accuracy)))
             self.epoch_loss.append(float(sum(batch_loss)/len(batch_loss)))
-            
+            evol_acc.append(batch_accuracy)
+            evol_loss.append(batch_loss)
+        return evol_acc, evol_loss
+    
     def test(self, data_loader):
         batch_loss = []
         batch_accuracy = []
@@ -263,7 +268,7 @@ class LinearClassification(nn.Module):
         test_accuracy = float(sum(batch_accuracy)/len(batch_accuracy))
         return test_loss,test_accuracy
 
-# Test the FF Conv method on the mnist dataset
+#%% Test the FF Conv method on the mnist dataset
 if __name__=='__main__':
     batchsize = 1024
     learning_rate = 0.03
@@ -280,13 +285,13 @@ if __name__=='__main__':
     
     FF_feature_extractor = FFConvNet()
 
-    #%% Trainig method 1 
     """
     There are two approaches for batch training:
     1. Train batches for all layers. ---> straigth forward
     2. Train batches for each layer. ---> need to create new batches for next layer input
     We use 1 for the following two training methods.
     """
+    # Training the FEATURE EXTRACTOR
     for epoch in range(epochs):
         epoch_loss_mean = 0
         for i, data in enumerate(train_loader, 0):
@@ -299,13 +304,14 @@ if __name__=='__main__':
             epoch_loss_mean = (i*epoch_loss_mean + loss)/(i+1)
             
         print(f'Loss mean of the epoch {epoch_loss_mean}')
-    
     #feature_extractor_output = FF_feature_extractor.respresentation_vects(next(iter(train_loader))[0]).shape[1] # With current feature extractor
     feature_extractor_output = 3440 # With current feature extractor
-    #%% Training method 1 Linear classifier
-    Linear_classifier = LinearClassification(FF_feature_extractor, input_dimension=feature_extractor_output)
-    Linear_classifier.train(train_loader, epochs=10)
     
+    # Training the CLASSIFIER LAYER
+    Linear_classifier = LinearClassification(FF_feature_extractor, input_dimension=feature_extractor_output)
+    logs = Linear_classifier.train(train_loader, epochs=10)
+    epoch_acc, epoch_loss = logs 
+    #%%
     test_loss,test_acc = Linear_classifier.test(test_loader)
     print("Test Loss: ",test_loss)
     print("Test Accuracy: ",test_acc)
