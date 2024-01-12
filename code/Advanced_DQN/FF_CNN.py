@@ -105,7 +105,15 @@ class FFConv2d(nn.Conv2d):
         return self.forward(x_pos).detach(), self.forward(x_neg).detach(), loss.item()
     
     def train_n(self, x_pos, x_neg, nb_epoch):
-        #TODO: add validation to stop training
+        """Train a layer for a number n of epochs
+        Args:
+            x_pos (): positive data
+            x_neg (): negative data
+            nb_epoch (): unmber of epoch to train single layer
+        Returns:
+            tuple: layer pos neg forwarded
+        """
+        #TODO: add validation to stop training / part in process
         for i in range(nb_epoch):
             g_pos = self.forward(x_pos).pow(2).mean(1)
             g_neg = self.forward(x_neg).pow(2).mean(1)
@@ -122,55 +130,6 @@ class FFConv2d(nn.Conv2d):
                 print(f'Loss {loss}')
         return self.forward(x_pos).detach(), self.forward(x_neg).detach()
     
-    
-
-
-class FFLinL(nn.Linear):
-    def __init__(self, in_features, out_features,
-                 bias=True, device=None, dtype=None):
-        super().__init__(in_features, out_features, bias, device, dtype)
-        self.relu = torch.nn.ReLU()
-        self.opt = torch.optim.Adam(self.parameters(), lr=0.03)
-        # TODO: in original paper treshold = nb of neurons, 1:1
-        self.threshold = 1.0
-    
-    def forward(self, x):
-        # x must have shape (B x D)
-        if not (x.dim() == 1 or x.dim()==2):
-            raise ValueError("Conv tensors must be 4 or 3 dim")
-        if x.dim() == 1:
-            x = x.unsqueeze(0)
-        x_direction = x / (x.norm(2, 1, keepdim=True) + 1e-4)
-        y = self.relu(x_direction @ self.weight.T + self.bias.unsqueeze(0))
-        return y
- 
-    def forward_ng(self, x): # Forward pass without torch grad
-        with torch.no_grad():
-            return self.forward(x.clone())    
-    
-    def goodness(self, x):
-        output = self.forward_ng(x)
-        if not (output.dim() == 3 or output.dim()==4):
-            raise ValueError("Conv tensors must be 4 or 3 dim")
-        if output.dim() == 3:
-            output = output.unsqueeze(0)
-        output = output.view(output.size(0), -1)
-        # reshape ConvLay output for goodness computation
-        goodness = output.pow(2).mean(1) - self.threshold
-        return goodness
-    
-    def train(self, x_pos, x_neg, num_epochs):
-        for i in range(num_epochs):
-            g_pos = self.forward(x_pos).pow(2).mean(1)
-            g_neg = self.forward(x_neg).pow(2).mean(1)
-            positive_loss = F.softplus(-g_pos + self.threshold).mean()
-            negative_loss = F.softplus(g_neg - self.threshold).mean()
-            loss = positive_loss + negative_loss
-            self.opt.zero_grad()
-            # compute the gradient make a step for only one layer
-            loss.backward()
-            self.opt.step()
-        return self.forward(x_pos).detach(), self.forward(x_neg).detach()
 
 
 class FFConvNet(nn.Module):
@@ -180,26 +139,35 @@ class FFConvNet(nn.Module):
     """
     def __init__(self):
         super().__init__()
-        self.conv1 = FFConv2d(in_channels=1, out_channels=128, kernel_size=10, stride=6)
+        # Network for MNIST
+        # self.conv1 = FFConv2d(in_channels=1, out_channels=128, kernel_size=10, stride=6)
+        # self.conv2 = FFConv2d(in_channels=128, out_channels=220, kernel_size=3)
+        # self.conv3 = FFConv2d(in_channels=220, out_channels=512, kernel_size=2)
+        # self.layers = [self.conv1, self.conv2, self.conv3]
+        
+        # Network for Breakout
+        self.conv1 = FFConv2d(in_channels=4, out_channels=128, kernel_size=10, stride=6)
         self.conv2 = FFConv2d(in_channels=128, out_channels=220, kernel_size=3)
         self.conv3 = FFConv2d(in_channels=220, out_channels=512, kernel_size=2)
         self.layers = [self.conv1, self.conv2, self.conv3]
-        #self.dropout = nn.Dropout(0.5)
-    
+        
     def respresentation_vects(self,x):
-        #layers_output = torch.Tensor([])
-        layer1 = self.conv1(x)
-        layer2 = self.conv2(layer1)
-        layer3 = self.conv3(layer2)
-        
-        # Flatten the output of each convolutional layer
-        layer1_flat = layer1.view(x.size(0), -1)
-        layer2_flat = layer2.view(x.size(0), -1)
-        layer3_flat = layer3.view(x.size(0), -1)
-        # Concatenate the flattened layers along the second dimension
-        concatenated_layers = torch.cat((layer1_flat, layer2_flat, layer3_flat), dim=1)
-        
-        return concatenated_layers
+        with torch.no_grad():
+            if x.dim() == 4:    
+                #layers_output = torch.Tensor([])
+                layer1 = self.conv1(x)
+                layer2 = self.conv2(layer1)
+                layer3 = self.conv3(layer2)
+                
+                # Flatten the output of each convolutional layer
+                layer1_flat = layer1.view(x.size(0), -1)
+                layer2_flat = layer2.view(x.size(0), -1)
+                layer3_flat = layer3.view(x.size(0), -1)
+                # Concatenate the flattened layers along the second dimension
+                concatenated_layers = torch.cat((layer1_flat, layer2_flat, layer3_flat), dim=1)
+            else:
+                raise ValueError('Input to the netwrok must ne 4 dimension : (B x C x H x W)')
+            return concatenated_layers
 
     
     def train(self, x_pos, x_neg):
@@ -315,8 +283,8 @@ if __name__=='__main__':
     #%% Trainig method 1 
     """
     There are two approaches for batch training:
-    0. Train batches for all layers. ---> straigth forward
-    1. Train batches for each layer. ---> need to create new batches for next layer input
+    1. Train batches for all layers. ---> straigth forward
+    2. Train batches for each layer. ---> need to create new batches for next layer input
     We use 1 for the following two training methods.
     """
     for epoch in range(epochs):
@@ -342,7 +310,7 @@ if __name__=='__main__':
     print("Test Loss: ",test_loss)
     print("Test Accuracy: ",test_acc)
     
-    #%% Trainig method second idea
+    #%% Trainig method 2 
     """
     There are two approaches for batch training:
     1. Train batches for each layer. ---> need to create new batches for next layer input
@@ -382,3 +350,53 @@ if __name__=='__main__':
     loaded_model = FFConvNet()
     loaded_model.load_state_dict(torch.load('ffconvnet_model.pth'))
     loaded_model.eval() 
+#%%
+
+"""
+class FFLinL(nn.Linear):
+    def __init__(self, in_features, out_features,
+                 bias=True, device=None, dtype=None):
+        super().__init__(in_features, out_features, bias, device, dtype)
+        self.relu = torch.nn.ReLU()
+        self.opt = torch.optim.Adam(self.parameters(), lr=0.03)
+        # TODO: in original paper treshold = nb of neurons, 1:1
+        self.threshold = 1.0
+    
+    def forward(self, x):
+        # x must have shape (B x D)
+        if not (x.dim() == 1 or x.dim()==2):
+            raise ValueError("Conv tensors must be 4 or 3 dim")
+        if x.dim() == 1:
+            x = x.unsqueeze(0)
+        x_direction = x / (x.norm(2, 1, keepdim=True) + 1e-4)
+        y = self.relu(x_direction @ self.weight.T + self.bias.unsqueeze(0))
+        return y
+ 
+    def forward_ng(self, x): # Forward pass without torch grad
+        with torch.no_grad():
+            return self.forward(x.clone())    
+    
+    def goodness(self, x):
+        output = self.forward_ng(x)
+        if not (output.dim() == 3 or output.dim()==4):
+            raise ValueError("Conv tensors must be 4 or 3 dim")
+        if output.dim() == 3:
+            output = output.unsqueeze(0)
+        output = output.view(output.size(0), -1)
+        # reshape ConvLay output for goodness computation
+        goodness = output.pow(2).mean(1) - self.threshold
+        return goodness
+    
+    def train(self, x_pos, x_neg, num_epochs):
+        for i in range(num_epochs):
+            g_pos = self.forward(x_pos).pow(2).mean(1)
+            g_neg = self.forward(x_neg).pow(2).mean(1)
+            positive_loss = F.softplus(-g_pos + self.threshold).mean()
+            negative_loss = F.softplus(g_neg - self.threshold).mean()
+            loss = positive_loss + negative_loss
+            self.opt.zero_grad()
+            # compute the gradient make a step for only one layer
+            loss.backward()
+            self.opt.step()
+        return self.forward(x_pos).detach(), self.forward(x_neg).detach()
+"""

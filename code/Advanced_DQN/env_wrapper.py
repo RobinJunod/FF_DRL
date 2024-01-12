@@ -47,18 +47,20 @@ class BreakoutWrapper(gym.Wrapper):
             action = 2 # change it to match the env
         elif action == 2:
             action = 3
-        #rewards = 0
-        #for _ in range(2): # play 2 time the same action
-        obs, reward, terminated, truncated, info = self.env.step(action)
-        rem_lives = info['lives']
-            #rewards += reward
+            
+        total_reward = 0
+        rem_lives = 5
+        for _ in range(2): # Frame skipping technique from deepmind paper
+            obs, reward, terminated, truncated, info = self.env.step(action)
+            rem_lives = info['lives']
+            total_reward += reward
 
         if rem_lives < 5:
             terminated = True
-            reward = -0.1 # pen for losing a life
+            total_reward = 0 # pen for losing a life
         
         self.pp_obs = self.preprocess(obs)
-        return self.pp_obs, reward, terminated, truncated, info
+        return self.pp_obs, total_reward, terminated, truncated, info
 
             
     def show_current_obs(self):
@@ -84,11 +86,20 @@ class BreakoutWrapper(gym.Wrapper):
         image = F.to_grayscale(image)
         
         # Convert to boolean (0 or 1)
-        threshold_value = 0.1 # Set your threshold value here
+        threshold_value = 0.01 # Set your threshold value here
         image = (np.array(image) / 255.0 > threshold_value).astype(bool)
 
         return image
 
+
+def play_openai():
+    import gym
+    from gym.utils.play import play
+    play(gym.make("BreakoutNoFrameskip-v4", render_mode="rgb_array"), keys_to_action={
+                                                   "q": 3,
+                                                   "w" : 2,
+                                                  }, noop=0)
+    
 
 #%%
 if __name__=='__main__':
@@ -103,11 +114,10 @@ if __name__=='__main__':
         if i%4==0:
             env.show_current_obs()
     
+    #%% play breakout with keyboard
+    play_openai()
+    
     #%%
-    # Test the 
-    # make 10 time same action
- 
-# %%
 
     #def show_current_state(self):
     #    current_state = self._get_state()

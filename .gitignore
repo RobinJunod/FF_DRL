@@ -3,3 +3,4 @@ code/Advanced_DRL/data**
 *.pth
 *.gz
 *.csv
+*.png
