@@ -66,7 +66,7 @@ def plot_comp_negTol():
 
     # Set common labels for the entire figure, adjusted for non-overlapping
     fig.text(0.5, -0.01, 'Episode', ha='center', fontsize=12)
-    fig.text(-0.0, 0.5, 'Reward', va='center', rotation='vertical', fontsize=12)
+    fig.text(-0.0, 0.5, 'Total Reward', va='center', rotation='vertical', fontsize=12)
 
     # Set a title for the entire figure
     plt.suptitle('Reward Evolution with different negative data range', fontsize=14, y=1)
@@ -114,7 +114,7 @@ for item in legend.legendHandles:
     
 # Set labels and title with larger font sizes
 ax.set_xlabel('Episode', fontsize=14)
-ax.set_ylabel('Reward', fontsize=14)
+ax.set_ylabel('Total Reward', fontsize=14)
 ax.set_title('Survival-Focused vs Random', fontsize=16)
 # Customize tick label font sizes
 ax.tick_params(axis='both', which='major', labelsize=12)
@@ -170,7 +170,7 @@ for item in legend.legendHandles:
     
 # Set labels and title with larger font sizes
 ax.set_xlabel('Episode', fontsize=14)
-ax.set_ylabel('Reward', fontsize=14)
+ax.set_ylabel('Total Reward', fontsize=14)
 ax.set_title('Comparison of Training Methods: one by one vs all', fontsize=16)
 
 # Customize tick label font sizes
@@ -194,10 +194,10 @@ def comp_death_horizon():
     import matplotlib.pyplot as plt
 
     # Load the CSV files
-    file1 = "../../results/SF_experiments/reward_B_config_10000_3000_5_10.csv"
-    file2 = "../../results/SF_experiments/reward_B_config_10000_3000_5_20.csv"
-    file3 = "../../results/SF_experiments/reward_B_config_10000_3000_10_5.csv"
-    file4 = "../../results/SF_experiments/reward_B_config_10000_3000_20_5.csv"
+    file1 = "../../results/SF_experiments/reward_lin_config_10000_3000_5_10.csv"
+    file2 = "../../results/SF_experiments/reward_lin_config_10000_3000_5_20.csv"
+    file3 = "../../results/SF_experiments/reward_lin_config_10000_3000_10_5.csv"
+    file4 = "../../results/SF_experiments/reward_lin_config_10000_3000_20_5.csv"
     file5 = "../../results/SF_experiments/reward_B_config_10000_3000_10_10.csv"
     file6 = "../../results/SF_experiments/reward_B_config_10000_3000_20_20.csv"
 
@@ -259,7 +259,7 @@ def comp_death_horizon():
 
     # Set common labels for the entire figure
     fig.text(0.5, -0.04, 'Episode', ha='center', fontsize=14)
-    fig.text(-0.04, 0.5, 'Reward', va='center', rotation='vertical', fontsize=14)
+    fig.text(-0.04, 0.5, 'Total Reward', va='center', rotation='vertical', fontsize=14)
 
     # Customize tick label font sizes for all subplots
     for ax in axs:
@@ -283,3 +283,5 @@ def comp_death_horizon():
     plt.show()
 
 #%%
+def exploration_rate():
+    pass

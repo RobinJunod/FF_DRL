@@ -72,7 +72,7 @@ def dataset_GMM(n_samples= 10000, show_plot=True):
                 ax.set_xlabel(f'X{x+1}')
                 ax.set_ylabel(f'X{y+1}')
                 ax.set_zlabel('Density')
-                ax.set_title('Dataset')
+                ax.set_title(f'View from : X{x+1} and X{y+1}', fontsize=16)
                 # Enable interactive mode
                 ax.mouse_init()
                 plt.show()
@@ -103,7 +103,7 @@ def dataset_GMM(n_samples= 10000, show_plot=True):
                 plt.colorbar()
                 plt.xlabel(f'X{x+1}')
                 plt.ylabel(f'X{y+1}')
-                plt.title('Contour Plot of Density')
+                plt.title(f'Density : X{x+1} and X{y+1}', fontsize=18)
                 plt.show()
                 #plt.savefig(f'../results/FF_Qlearning/x{x+1}x{y+1}_contours.png')
                 plt.close(fig)

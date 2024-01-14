@@ -57,6 +57,22 @@ class ReplayBuffer:
         
         return states, actions, rewards, next_states, dones
     
+    
+    def sample_pos_neg_shuffling(self, idx_start,batch_size=32):
+        """This method of generating negative data is shuffling
+        Args:
+            idx_start (int): iindex of the starting point
+            batch_size (int): number of samples to generate (states). Defaults to 32.
+        Returns:
+            tuple (np array): positive and negative sample batch
+        """
+        indices = np.arange(idx_start, idx_start+batch_size)
+        states_pos = np.array([self.get_state(idx) for idx in indices], dtype=np.float32)
+        states_neg = np.copy(states_pos)
+        for i in range(states_neg.shape[0]):  # Loop over states
+            np.random.shuffle(states_neg[i, :, :, :])
+        return states_pos, states_neg
+    
     def show_state(self, state=None):
         if state is None: # take a rnd state
             state,_,_,_,_ = self.sample(batch_size=1)
@@ -96,6 +112,5 @@ if __name__ == '__main__':
         if done:
             break
     
-    memory.show_rnd_state()
     #%%
-    import stable_basline3
+    

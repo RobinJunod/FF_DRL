@@ -2,3 +2,4 @@ code/Advanced_DRL/data/**
 *.pyc
 *.gz
 *.csv
+*.png

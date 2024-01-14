@@ -5,9 +5,6 @@ python_script="DRL_model_SurvivalFocused.py"
 
 # Define an array of different sets of command-line arguments
 args=(
-    "--num_episodes 3000 --theta_start 5 --theta_end 10"
-    "--num_episodes 3000 --theta_start 5 --theta_end 20"
-    "--num_episodes 3000 --theta_start 10 --theta_end 5"
     "--num_episodes 3000 --theta_start 20 --theta_end 5"
 )
 

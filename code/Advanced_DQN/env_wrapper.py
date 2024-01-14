@@ -88,11 +88,20 @@ class BreakoutWrapper(gym.Wrapper):
         image = F.to_grayscale(image)
         
         # Convert to boolean (0 or 1)
-        threshold_value = 0.1 # Set your threshold value here
+        threshold_value = 0.01 # Set your threshold value here
         image = (np.array(image) / 255.0 > threshold_value).astype(bool)
 
         return image
 
+
+def play_openai():
+    import gym
+    from gym.utils.play import play
+    play(gym.make("BreakoutNoFrameskip-v4", render_mode="rgb_array"), keys_to_action={
+                                                   "q": 3,
+                                                   "w" : 2,
+                                                  }, noop=0)
+    
 
 #%%
 if __name__=='__main__':
@@ -107,11 +116,10 @@ if __name__=='__main__':
         if i%4==0:
             env.show_current_obs()
     
+    #%% play breakout with keyboard
+    play_openai()
+    
     #%%
-    # Test the 
-    # make 10 time same action
- 
-# %%
 
     #def show_current_state(self):
     #    current_state = self._get_state()

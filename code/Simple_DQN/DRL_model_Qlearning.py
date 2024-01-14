@@ -32,7 +32,7 @@ def play_random(env, num_episodes = 3000):
         (states, rewards): a matrix of all states it has been through,
                            a list of the rewards for random episodes
     """
-    memory_capacity = 10000
+    memory_capacity = 10_000
     episode_memory = []
     rnd_action_rewards = []
     for episode in range(num_episodes):
@@ -48,7 +48,7 @@ def play_random(env, num_episodes = 3000):
             action = env.action_space.sample()  # Random action
 
             # Take the selected action (New API)
-            next_state, reward, terminated, truncated, info = env.step(action)
+            next_state, reward, terminated, truncated, _ = env.step(action)
             # New API, the done flag can be detected wether the episode failed or succed
             done = terminated or truncated
             # put in a torch tensor
