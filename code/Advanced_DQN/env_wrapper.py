@@ -43,22 +43,26 @@ class BreakoutWrapper(gym.Wrapper):
         Returns:
             tuple: custom state, reward, term, trunc, info
         """
+        # Select the good actions, wrapper vs gym
         if action == 1:
             action = 2 # change it to match the env
         elif action == 2:
             action = 3
-        #rewards = 0
-        #for _ in range(2): # play 2 time the same action
-        obs, reward, terminated, truncated, info = self.env.step(action)
-        rem_lives = info['lives']
-            #rewards += reward
+        
+        
+        total_rewards = 0
+        rem_lives = 5 # check if lost a point
+        for _ in range(2): # play 2 time the same action
+            obs, reward, terminated, truncated, info = self.env.step(action)
+            rem_lives = info['lives']
+            total_rewards += reward
 
         if rem_lives < 5:
             terminated = True
-            reward = -0.1 # pen for losing a life
+            total_rewards = 0 
         
         self.pp_obs = self.preprocess(obs)
-        return self.pp_obs, reward, terminated, truncated, info
+        return self.pp_obs, total_rewards, terminated, truncated, info
 
             
     def show_current_obs(self):

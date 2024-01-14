@@ -24,21 +24,22 @@ class DQNAgent:
         self.memory = ReplayBuffer(max_size=200_000, stack_size=4) # 1'000'000 in paper, rep mem size
         self.batch_size = 32
         self.gamma = 0.99
-        self.target_update_freq = 1_000
-        self.epsilon = 1.0
-        self.epsilon_min = 0.01
-        self.final_exploration_step = 500_000 # 1'000'000 in paper, number step to stop exploring
+        self.target_update_freq = 5_000
+        self.epsilon = 0.5
+        self.epsilon_min = 0.02
+        self.final_exploration_step = 300_000 # 1'000'000 in paper, number step to stop exploring
         self.epsilon_decay = (1-0.1)/self.final_exploration_step # Linear decay
         self.epsilon_decay_exp = self.epsilon_min**(1/self.final_exploration_step ) # Exponentional decay
-        self.no_learning_steps = 10_000
+        self.no_learning_steps = 100_000
         # Deep Neural Network
         #self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # to use gpu
         
         self.q_network = QNetwork(self.action_size)
         self.target_q_network = QNetwork(self.action_size)
+        # TODO : remove if want to train from start
         self.target_q_network.load_state_dict(self.q_network.state_dict())
         self.target_q_network.eval()
-        self.optimizer = optim.Adam(self.q_network.parameters(), lr=1e-4)
+        self.optimizer = optim.Adam(self.q_network.parameters(), lr=0.0001, eps=1.5e-4)
         # Loggers
 
 
@@ -70,7 +71,7 @@ class DQNAgent:
         if self.memory.size < self.no_learning_steps:
             return
         # Get batch sample from memory buffer
-        states, actions, rewards, next_states, dones = self.memory.sample(batch_size=32)
+        states, actions, rewards, next_states, dones = self.memory.sample(batch_size=self.batch_size)
         # Get all the Q values at each states 
         q_values = self.q_network(states)
         # The next Q values are determined by the more stable network (off policy)
@@ -80,14 +81,14 @@ class DQNAgent:
         # Select the Q values of the actions taken
         q_values = q_values.gather(1, actions.view(-1, 1))
         # Compute the loss from the q values differences (the prediction and the target) (2-arrays of length 32 (batch-size))
-        # loss = F.smooth_l1_loss(q_values, target_q_values.view(-1, 1))
+        loss = F.smooth_l1_loss(q_values, target_q_values.view(-1, 1))
         # loss = F.mse_loss(q_values, target_q_values.view(-1, 1))
-        loss = F.l1_loss(q_values, target_q_values.view(-1, 1))
+        # loss = F.l1_loss(q_values, target_q_values.view(-1, 1))
         # Optimization using basic pytorch code
         self.optimizer.zero_grad()
         loss.backward()
         # Clip gradients
-        # torch.nn.utils.clip_grad_norm_(self.q_network.parameters(), max_norm=1.0)
+        torch.nn.utils.clip_grad_norm_(self.q_network.parameters(), max_norm=1.0)
         self.optimizer.step()
         # Decrease the epsilon
         self.epsilon = max(self.epsilon_min, self.epsilon - self.epsilon_decay) # lin decay
@@ -140,11 +141,11 @@ def train(agent, env, nb_epsiode=100, save_model=True):
             max_rew = total_reward
         #agent.memory.show_state()
         print(f'Reward episode:{total_reward}, max rew :{max_rew} ,  epsilon : {agent.epsilon}')
-        new_row = {'rew': [total_reward], 
-                    'max': [max_rew], 
-                    'ep': [agent.epsilon]}
-        logs.loc[len(logs)] = new_row
-        logs.to_csv('logs.csv', index=False)
+        #new_row = {'rew': [total_reward], 
+        #            'max': [max_rew], 
+        #            'ep': [agent.epsilon]}
+        #logs.loc[len(logs)] = new_row
+        #logs.to_csv('logs.csv', index=False)
 
     if save_model:
         torch.save(agent.q_network.state_dict(), 'dqn_breakout_q_network.pth')
@@ -185,16 +186,16 @@ if __name__ == '__main__':
     #env = gym.make('BreakoutDeterministic-v4')
     #env = gym.make('ALE/Breakout-v5')
     env = gym.make('BreakoutNoFrameskip-v4')
-    env = BreakoutWrapper(env)
-
+    env = BreakoutWrapper(env) 
+   
     # Initialize the DQN agent
     agent = DQNAgent()
     # Train DQL
-    train(agent,env, nb_epsiode=25_000, save_model=True)
+    train(agent,env, nb_epsiode=50_000, save_model=True)
 
     #%% Cell to run the test mode / inference
-    # env2 = gym.make('BreakoutNoFrameskip-v4', render_mode='human')
-    # env2 = BreakoutWrapper(env2)
-    # agent2 = DQNAgent()
-    # pth_path = 'data/model_weight_pth/dqn_breakout_q_network_600000.pth'
-    # test(agent2, pth_path, env2, save_video=False, render=True)
+    env2 = gym.make('BreakoutNoFrameskip-v4', render_mode='human')
+    env2 = BreakoutWrapper(env2)
+    agent2 = DQNAgent()
+    pth_path = 'data/model_weight_pth/dqn_breakout_q_network_newwrapper.pth'
+    test(agent2, pth_path, env2, save_video=False, render=True)
