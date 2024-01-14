@@ -19,7 +19,9 @@ from torch.functional import F
 def mask_gen():
     random_iter = np.random.randint(5,10)
     random_image = np.random.randint(2, size=image_shape).squeeze().astype(np.float32)
-    blur_filter = np.array([[1, 2, 1], [2, 4, 2], [1, 2, 1]]) / 16
+    blur_filter = np.array([[1, 2, 1], 
+                            [2, 4, 2], 
+                            [1, 2, 1]]) / 16
     for i in range(random_iter):
         random_image = convolve2d(random_image, blur_filter, mode='same', boundary='symm')
     mask = (random_image > 0.5).astype(np.float32)
@@ -306,59 +308,56 @@ if __name__=='__main__':
         print(f'Loss mean of the epoch {epoch_loss_mean}')
     #feature_extractor_output = FF_feature_extractor.respresentation_vects(next(iter(train_loader))[0]).shape[1] # With current feature extractor
     feature_extractor_output = 3440 # With current feature extractor
-    
     # Training the CLASSIFIER LAYER
     Linear_classifier = LinearClassification(FF_feature_extractor, input_dimension=feature_extractor_output)
     logs = Linear_classifier.train(train_loader, epochs=10)
-    epoch_acc, epoch_loss = logs 
-    #%%
+    epoch_acc, epoch_loss = logs
+    # # Save the model after training
+    # FF_feature_extractor.save_model('ffconvnet_model.pth')
+    # # Loading the model
+    # loaded_model = FFConvNet()
+    # loaded_model.load_state_dict(torch.load('ffconvnet_model.pth'))
+    # loaded_model.eval() 
     test_loss,test_acc = Linear_classifier.test(test_loader)
     print("Test Loss: ",test_loss)
     print("Test Accuracy: ",test_acc)
     
-    #%% Trainig method 2 
-    """
-    There are two approaches for batch training:
-    1. Train batches for each layer. ---> need to create new batches for next layer input
-    This method needs more memory capacity
-    """
-    for i, data in enumerate(train_loader, 0):
-        inputs, labels = data
-        #print(f'batch training number {i} / {len(train_loader)}')
-        x_pos = inputs
-        x_neg = negative_data_gen(inputs)
-        loss = FF_feature_extractor.train(x_pos, x_neg)
     
-    epoch_loss_mean = (i*epoch_loss_mean + loss)/(i+1)
-    
-    print(f'Loss mean of the epoch {epoch_loss_mean}')
+#%% TODO : Trainig method 2 -> for futur work
+#"""
+#There are two approaches for batch training:
+#1. Train batches for each layer. ---> need to create new batches for next layer input
+#This method needs more memory capacity
+#"""
+#for i, data in enumerate(train_loader, 0):
+#    inputs, labels = data
+#    #print(f'batch training number {i} / {len(train_loader)}')
+#    x_pos = inputs
+#    x_neg = negative_data_gen(inputs)
+#    loss = FF_feature_extractor.train(x_pos, x_neg)
+#
+#epoch_loss_mean = (i*epoch_loss_mean + loss)/(i+1)
+#
+#print(f'Loss mean of the epoch {epoch_loss_mean}')
+## test model
+#avg_accruacy = 0
+#i = -1
+#for _, data in enumerate(test_loader, 0):
+#    i += 1
+#    inputs, labels = data
+#    x_pos = inputs
+#    x_neg = negative_data_gen(inputs)
+#    
+#    avg_accruacy = (i*avg_accruacy + (FF_feature_extractor.conv1.goodness(x_pos)>0).sum()/len(FF_feature_extractor.conv1.goodness(x_pos)))/(i+1)
+#    
+#    print(f'accruacy of the pos data {(FF_feature_extractor.conv1.goodness(x_pos)>0).sum()/len(FF_feature_extractor.conv1.goodness(x_pos))}')
+#    print(f'accruacy of the neg data {(FF_feature_extractor.conv1.goodness(x_neg)<0).sum()/len(FF_feature_extractor.conv1.goodness(x_neg))}')
+#    
+#print(f'Average accruacy : {avg_accruacy}')
 
 
-    #%% test model
-    avg_accruacy = 0
-    i = -1
-    for _, data in enumerate(test_loader, 0):
-        i += 1
-        inputs, labels = data
-        x_pos = inputs
-        x_neg = negative_data_gen(inputs)
-        
-        avg_accruacy = (i*avg_accruacy + (FF_feature_extractor.conv1.goodness(x_pos)>0).sum()/len(FF_feature_extractor.conv1.goodness(x_pos)))/(i+1)
-        
-        print(f'accruacy of the pos data {(FF_feature_extractor.conv1.goodness(x_pos)>0).sum()/len(FF_feature_extractor.conv1.goodness(x_pos))}')
-        print(f'accruacy of the neg data {(FF_feature_extractor.conv1.goodness(x_neg)<0).sum()/len(FF_feature_extractor.conv1.goodness(x_neg))}')
-        
-    print(f'Average accruacy : {avg_accruacy}')
-# %%
-    # Save the model after training
-    model.save_model()
-    # Loading the model
-    loaded_model = FFConvNet()
-    loaded_model.load_state_dict(torch.load('ffconvnet_model.pth'))
-    loaded_model.eval() 
-#%%
-
-"""
+""" INFO: this code could be used for futur work if we want to increase the network from CNN to Linear layer.
+    (in my opinon this would not change a lot)
 class FFLinL(nn.Linear):
     def __init__(self, in_features, out_features,
                  bias=True, device=None, dtype=None):

@@ -96,11 +96,14 @@ def DRL_train_network(env, ff_net, cell=False, **kwargs):
             total_reward += reward
             state = next_state
 
-
+        theta_type='lin'
+        theta_incr_lin = (theta_end-theta_start)/(0.5*num_episodes)
         # Epsilon and Theta decay
         epsilon = min(epsilon_end, epsilon * epsilon_decay) if epsilon_decay > 1 else max(epsilon_end, epsilon * epsilon_decay) 
-        theta = min(theta_end, theta * theta_decay) if theta_decay > 1 else max(theta_end, theta * theta_decay)
-        
+        if theta_type == 'exp':
+            theta = min(theta_end, theta * theta_decay) if theta_decay > 1 else max(theta_end, theta * theta_decay)
+        elif theta_type == 'lin':
+            theta = min(theta_end, theta + theta_incr_lin) if theta_incr_lin > 0 else max(theta_end, theta + theta_incr_lin)
         # Sort the replay memory such that the good runs stays in it (for better estimation of pos and neg data)
         replay_memory_positive_list.append(episode_memory[:-int(theta)])
         replay_memory_positive_list = sorted(replay_memory_positive_list, key=len, reverse=True)
@@ -253,8 +256,8 @@ if __name__ == '__main__':
     df1 = pd.DataFrame(reward_evolution, columns=['episode_R', 'Reward Evolution'])
     df2 = pd.DataFrame(exploration_rate_evolution, columns=['episode_E', 'Exploration Evolution'])
     # Save the DataFrames to a CSV file
-    df1.to_csv('../../results/SF_experiments/reward_B_'+csv_file, index=False)
-    df2.to_csv('../../results/SF_experiments/explo_B_'+csv_file, index=False)
+    df1.to_csv('../../results/SF_experiments/reward_lin_'+csv_file, index=False)
+    df2.to_csv('../../results/SF_experiments/explo_lin_'+csv_file, index=False)
     
     print(f'Data saved to {csv_file}')
 
