@@ -43,24 +43,26 @@ class BreakoutWrapper(gym.Wrapper):
         Returns:
             tuple: custom state, reward, term, trunc, info
         """
+        # Select the good actions, wrapper vs gym
         if action == 1:
             action = 2 # change it to match the env
         elif action == 2:
             action = 3
-            
-        total_reward = 0
-        rem_lives = 5
-        for _ in range(2): # Frame skipping technique from deepmind paper
+        
+        
+        total_rewards = 0
+        rem_lives = 5 # check if lost a point
+        for _ in range(2): # play 2 time the same action
             obs, reward, terminated, truncated, info = self.env.step(action)
             rem_lives = info['lives']
-            total_reward += reward
+            total_rewards += reward
 
         if rem_lives < 5:
             terminated = True
-            total_reward = 0 # pen for losing a life
+            total_rewards = 0 
         
         self.pp_obs = self.preprocess(obs)
-        return self.pp_obs, total_reward, terminated, truncated, info
+        return self.pp_obs, total_rewards, terminated, truncated, info
 
             
     def show_current_obs(self):
