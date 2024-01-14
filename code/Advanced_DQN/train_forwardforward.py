@@ -89,7 +89,7 @@ class FFAgent:
                 epsilon=0.5,
                 epsilon_min=0.01,
                 epsilon_decay = 'lin', # can take values 'lin' or 'exp'
-                final_exploration_step=500_000,
+                final_exploration_step=100_000,
                 no_learning_steps=10_000,
                 ):
         """This is the calss of the agent, it can update its neural network based on
@@ -182,12 +182,14 @@ class FFAgent:
             self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay_exp) # exp decay
         return loss.item() # Not mendatory
 
-def train_with_FF(agent, env, nb_epsiode=100, save_model=True):
+def train_dqn_lastlayer(agent, env, feature_extractor_n,end_step=500_000):
     
     t_steps = 0
-    max_rew = 0 
+    max_rew = 0
+    episode = 0
     #logs = pd.DataFrame(columns=['rew', 'max', 'ep'])
-    for episode in range(nb_epsiode):
+    while t_steps < end_step: # Training in number of steps
+        episode += 1
         obs, _ = env.reset()
         # Add the first state to the replay memory TODO : verify if good
         agent.memory.remember(obs, 0, 0, True) # a=No-op, r=0, done=False
@@ -218,13 +220,17 @@ def train_with_FF(agent, env, nb_epsiode=100, save_model=True):
                 print(f'Loss at ts {t_steps} : {loss}')
 
             # save network weights
-            if save_model==True and t_steps % 200_000 == 0:
-                model_save_path = f'dqn_breakout_regression_layer_{t_steps}.pth'
-                torch.save(agent.regression_layer.state_dict(), model_save_path)
+            # if save_model==True and t_steps % 100_000 == 0:
+            #     model_save_path = f'dqn_breakout_regression_layer_{t_steps}.pth'
+            #     torch.save(agent.regression_layer.state_dict(), model_save_path)
         
         if max_rew < total_reward:
             max_rew = total_reward
         print(f'Episode {episode}, reward = {total_reward}, max {max_rew}')
+    
+        
+    model_save_path = f'ff_dqn_lastlayer_{feature_extractor_n}.pth'
+    torch.save(agent.regression_layer.state_dict(), model_save_path)
 
     
 
@@ -238,17 +244,24 @@ if __name__ == '__main__':
     print('Initalization, first network training')
     feature_extractor, features_size = init_feature_extractor(env,
                                                               batch_size=32, 
-                                                              num_epochs=1, 
-                                                              max_mem_size=1_000)
+                                                              num_epochs=5, 
+                                                              max_mem_size=100_000)
     #%%
     num_full_training = 10
-    for i in range(num_full_training):
+    for training_n in range(num_full_training):
+        # Create the agent (with the fixed feature extractor)
         ff_agent = FFAgent(feature_extractor, features_size,
-                           memory_max_size=1_000)
-        train_with_FF(ff_agent, env, nb_epsiode=10)
-        print('End of full training nb :', i)
-        print('Feature extractor training ')
-        feature_extractor, feature_size = train_feature_extractor(feature_extractor, ff_agent.memory, 
+                           memory_max_size=100_000)
+        # Train the last layer
+        print('Start training DQN')
+        train_dqn_lastlayer(ff_agent, env,
+                            training_n,
+                            end_step=300_000)
+        print('End of full training nb :', training_n)
+        
+        print('Start training feature extractor')
+        feature_extractor, feature_size = train_feature_extractor(feature_extractor, 
+                                                                  ff_agent.memory, # memory state to train feature extractor
                                                                   batch_size=32, 
-                                                                  num_epochs=2)
+                                                                  num_epochs=5)
     
