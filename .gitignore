@@ -1,4 +1,4 @@
-code/Advanced_DRL/data**
+code/Advanced_DRL/data/**
 *.pyc
 *.gz
 *.csv
