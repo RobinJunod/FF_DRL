@@ -52,9 +52,11 @@ class BreakoutWrapper(gym.Wrapper):
         
         total_rewards = 0
         rem_lives = 5 # check if lost a point
-        for _ in range(2): # play 2 time the same action
+        for i in range(4): # play 2 time the same action
+            if i == 3 : action=0
             obs, reward, terminated, truncated, info = self.env.step(action)
             rem_lives = info['lives']
+            reward = np.clip(reward, -1, 1)
             total_rewards += reward
 
         if rem_lives < 5:

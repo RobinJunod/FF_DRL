@@ -44,10 +44,11 @@ class ReplayBuffer:
         return state
 
     def sample(self, batch_size=32):
+        # is stored : next_obs, action, reward, dones
         # Sample a batch of states, actions, rewards, next states, and dones
         indices = np.random.choice(self.size, batch_size, replace=False)
-        states = np.array([self.get_state(idx) for idx in indices], dtype=np.float32)
-        next_states = np.array([self.get_state(idx + 1) for idx in indices], dtype=np.float32)
+        states = np.array([self.get_state(idx-1) for idx in indices], dtype=np.float32)
+        next_states = np.array([self.get_state(idx) for idx in indices], dtype=np.float32)
         
         states = torch.tensor(states, dtype=torch.float32)
         next_states = torch.tensor(next_states, dtype=torch.float32)

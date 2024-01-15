@@ -149,8 +149,8 @@ class FFConvNet(nn.Module):
         
         # Network for Breakout
         self.conv1 = FFConv2d(in_channels=4, out_channels=128, kernel_size=10, stride=6)
-        self.conv2 = FFConv2d(in_channels=128, out_channels=220, kernel_size=3)
-        self.conv3 = FFConv2d(in_channels=220, out_channels=512, kernel_size=2)
+        self.conv2 = FFConv2d(in_channels=128, out_channels=256, kernel_size=3)
+        self.conv3 = FFConv2d(in_channels=256, out_channels=512, kernel_size=2)
         self.layers = [self.conv1, self.conv2, self.conv3]
         
     def respresentation_vects(self,x):

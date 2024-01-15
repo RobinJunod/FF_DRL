@@ -19,8 +19,6 @@ import torch.nn.functional as F
 from torch import optim
 
 import gym
-from gym import wrappers
-from gym.utils.save_video import save_video
 
 from replay_memory import ReplayBuffer
 from FF_CNN import FFConvNet
@@ -177,7 +175,7 @@ class FFAgent:
         self.optimizer.step()
         # Decrease the epsilon
         if self.epsilon_decay == 'LIN':
-            self.epsilon = max(self.epsilon_min, self.epsilon - self.epsilon_decay) # lin decay
+            self.epsilon = max(self.epsilon_min, self.epsilon - self.epsilon_decay_lin) # lin decay
         elif self.epsilon_decay == 'EXP':
             self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay_exp) # exp decay
         return loss.item() # Not mendatory
@@ -238,7 +236,7 @@ def train_dqn_lastlayer(agent, env, feature_extractor_n,end_step=500_000):
 if __name__ == '__main__':
     
     env = gym.make('BreakoutNoFrameskip-v4')
-    env = BreakoutWrapper(env)
+    env = BreakoutWrapper(env) v
 
     # Initiate feature extractor with random agent
     print('Initalization, first network training')
@@ -246,9 +244,11 @@ if __name__ == '__main__':
                                                               batch_size=32, 
                                                               num_epochs=5, 
                                                               max_mem_size=100_000)
-    #%%
+    
     num_full_training = 10
     for training_n in range(num_full_training):
+        # save the weights of the feature extractor
+        torch.save(feature_extractor.state_dict(), f'ffconvnet_model_{training_n}.pth')
         # Create the agent (with the fixed feature extractor)
         ff_agent = FFAgent(feature_extractor, features_size,
                            memory_max_size=100_000)

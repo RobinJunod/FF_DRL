@@ -135,17 +135,19 @@ def train(agent, env, nb_epsiode=100, save_model=True):
             if save_model==True and t_steps % 200_000 == 0:
                 model_save_path = f'dqn_breakout_q_network_{t_steps}.pth'
                 torch.save(agent.q_network.state_dict(), model_save_path)
-        
-         
+            
+                
         if total_reward > max_rew:
             max_rew = total_reward
         #agent.memory.show_state()
         print(f'Reward episode:{total_reward}, max rew :{max_rew} ,  epsilon : {agent.epsilon}')
-        #new_row = {'rew': [total_reward], 
-        #            'max': [max_rew], 
-        #            'ep': [agent.epsilon]}
-        #logs.loc[len(logs)] = new_row
-        #logs.to_csv('logs.csv', index=False)
+        if episode%100 == 0:
+            new_row = { 'episode' : [episode],
+                        'rew': [total_reward], 
+                        'max': [max_rew], 
+                        'ep': [agent.epsilon]}
+            logs.loc[len(logs)] = new_row
+            logs.to_csv('logs.csv', index=False)
 
     if save_model:
         torch.save(agent.q_network.state_dict(), 'dqn_breakout_q_network.pth')
@@ -191,11 +193,11 @@ if __name__ == '__main__':
     # Initialize the DQN agent
     agent = DQNAgent()
     # Train DQL
-    train(agent,env, nb_epsiode=50_000, save_model=True)
+    train(agent,env, nb_epsiode=10_000, save_model=True)
 
-    #%% Cell to run the test mode / inference
+     #%% Cell to run the test mode / inference
     env2 = gym.make('BreakoutNoFrameskip-v4', render_mode='human')
     env2 = BreakoutWrapper(env2)
     agent2 = DQNAgent()
-    pth_path = 'data/model_weight_pth/dqn_breakout_q_network_newwrapper.pth'
+    pth_path = 'model_weight_pth/dqn_breakout_q_network_insanelygood.pth'
     test(agent2, pth_path, env2, save_video=False, render=True)
