@@ -117,9 +117,9 @@ def train(agent, env, nb_epsiode=100, save_model=True):
             state = torch.tensor(agent.memory.get_state(agent.memory.ptr - 1), dtype=torch.float32)
             action = agent.act_egreedy(state) # Agent selects action
             
-            next_obs, reward, terminated, truncated, _ = env.step(action)
-            done = terminated or truncated
-            total_reward += reward
+            next_obs, reward, done, _, reward_unclipped = env.step(action)
+            
+            total_reward += reward_unclipped # For plotting purpuses
             # Adding s a r d to memory buffer #TODO:verify if good next_obs - obs
             agent.memory.remember(next_obs, action, reward, done)
             loss = agent.optimize_model()
@@ -171,9 +171,8 @@ def test(agent, pth_path, env, save_video=False, render=True):
             t_steps += 1
             state = torch.tensor(agent.memory.get_state(agent.memory.ptr - 1), dtype=torch.float32)
             action = agent.act(state)
-            next_state, reward, terminated, truncated, _ = env.step(action)
-            done = terminated or truncated
-            total_reward += reward
+            next_state, reward, done, _, reward_unclipped = env.step(action)
+            total_reward += reward_unclipped
             agent.memory.remember(next_state, reward, action, done)
             if render:
                 env.render()

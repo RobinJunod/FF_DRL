@@ -49,8 +49,7 @@ def init_feature_extractor(env,
         while not done:
             # Play the selected action
             action = env.action_space.sample()  # Random action
-            obs, reward, terminated, truncated, _ = env.step(action)
-            done = terminated or truncated
+            obs, reward, done, _, reward_unclipped = env.step(action)
             # Just store the state action pair
             memory.remember(obs, action, reward, done)
             
@@ -88,7 +87,7 @@ class FFAgent:
                 epsilon_min=0.01,
                 epsilon_decay = 'lin', # can take values 'lin' or 'exp'
                 final_exploration_step=100_000,
-                no_learning_steps=10_000,
+                no_learning_steps=5_000,
                 ):
         """This is the calss of the agent, it can update its neural network based on
         what is inside its replay memory. This separates the agent from the environemnt.
@@ -185,7 +184,7 @@ def train_dqn_lastlayer(agent, env, feature_extractor_n,end_step=500_000):
     t_steps = 0
     max_rew = 0
     episode = 0
-    #logs = pd.DataFrame(columns=['rew', 'max', 'ep'])
+    logs = pd.DataFrame(columns=['ep' ,'rew'])
     while t_steps < end_step: # Training in number of steps
         episode += 1
         obs, _ = env.reset()
@@ -203,9 +202,9 @@ def train_dqn_lastlayer(agent, env, feature_extractor_n,end_step=500_000):
             state = torch.tensor(agent.memory.get_state(agent.memory.ptr - 1), dtype=torch.float32)
             action = agent.act_egreedy(state) # Agent selects action
             
-            next_obs, reward, terminated, truncated, _ = env.step(action)
-            done = terminated or truncated
-            total_reward += reward
+            next_obs, reward, done, _, reward_unclipped = env.step(action)
+            
+            total_reward += reward_unclipped
             # Adding s a r d to memory buffer #TODO:verify if good next_obs - obs
             agent.memory.remember(next_obs, action, reward, done)
             loss = agent.optimize_model()
@@ -225,6 +224,13 @@ def train_dqn_lastlayer(agent, env, feature_extractor_n,end_step=500_000):
         if max_rew < total_reward:
             max_rew = total_reward
         print(f'Episode {episode}, reward = {total_reward}, max {max_rew}')
+        # LOG PART 
+        if episode%5 == 0:
+            new_row = { 'ep' : episode,
+                        'rew': total_reward}
+            logs.loc[len(logs)] = new_row
+            logs.to_csv(f'logs{feature_extractor_n}.csv', index=False)
+            
     
         
     model_save_path = f'ff_dqn_lastlayer_{feature_extractor_n}.pth'
@@ -236,14 +242,14 @@ def train_dqn_lastlayer(agent, env, feature_extractor_n,end_step=500_000):
 if __name__ == '__main__':
     
     env = gym.make('BreakoutNoFrameskip-v4')
-    env = BreakoutWrapper(env) v
+    env = BreakoutWrapper(env)
 
     # Initiate feature extractor with random agent
     print('Initalization, first network training')
     feature_extractor, features_size = init_feature_extractor(env,
                                                               batch_size=32, 
-                                                              num_epochs=5, 
-                                                              max_mem_size=100_000)
+                                                              num_epochs=5, #5 
+                                                              max_mem_size=100_000)#100000
     
     num_full_training = 10
     for training_n in range(num_full_training):
@@ -251,17 +257,17 @@ if __name__ == '__main__':
         torch.save(feature_extractor.state_dict(), f'ffconvnet_model_{training_n}.pth')
         # Create the agent (with the fixed feature extractor)
         ff_agent = FFAgent(feature_extractor, features_size,
-                           memory_max_size=100_000)
+                           memory_max_size=100_000) #100000
         # Train the last layer
         print('Start training DQN')
         train_dqn_lastlayer(ff_agent, env,
                             training_n,
-                            end_step=300_000)
+                            end_step=500_000)#300000
         print('End of full training nb :', training_n)
         
         print('Start training feature extractor')
         feature_extractor, feature_size = train_feature_extractor(feature_extractor, 
                                                                   ff_agent.memory, # memory state to train feature extractor
                                                                   batch_size=32, 
-                                                                  num_epochs=5)
+                                                                  num_epochs=5) #5
     

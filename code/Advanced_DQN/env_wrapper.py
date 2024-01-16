@@ -51,20 +51,23 @@ class BreakoutWrapper(gym.Wrapper):
         
         
         total_rewards = 0
+        total_rewards_unclipped = 0
         rem_lives = 5 # check if lost a point
+        done=False
         for i in range(4): # play 2 time the same action
             if i == 3 : action=0
-            obs, reward, terminated, truncated, info = self.env.step(action)
+            obs, reward, _, _, info = self.env.step(action)
             rem_lives = info['lives']
-            reward = np.clip(reward, -1, 1)
+            total_rewards_unclipped += reward
+            reward = np.clip(reward, -3, 3)
             total_rewards += reward
 
         if rem_lives < 5:
-            terminated = True
+            done = True
             total_rewards = 0 
         
         self.pp_obs = self.preprocess(obs)
-        return self.pp_obs, total_rewards, terminated, truncated, info
+        return self.pp_obs, total_rewards, done, info, total_rewards_unclipped
 
             
     def show_current_obs(self):
@@ -120,30 +123,4 @@ if __name__=='__main__':
     
     #%% play breakout with keyboard
     play_openai()
-    
     #%%
-
-    #def show_current_state(self):
-    #    current_state = self._get_state()
-    #    fig, axes = plt.subplots(1, 4, figsize=(16, 4))
-    #    for i in range(4):
-    #        axes[i].imshow(current_state[i, :, :], cmap='gray')
-    #        axes[i].axis('off')
-    #        axes[i].set_title(f'Frame {i + 1}')
-    #    plt.show()
-    #    
-    #def save_current_state_images(self, save_path, t_steps):
-    #    current_state = self._get_state()
-    #    fig, axes = plt.subplots(1, 4, figsize=(16, 4))
-    #    for i in range(4):
-    #        axes[i].imshow(current_state[i, :, :], cmap='gray')
-    #        axes[i].axis('off')
-    #        axes[i].set_title(f'Frame {i + 1}')
-    #        # Save each image to a file
-    #        img_path = f"{save_path}/frame_{i + 1}.png"
-    #        plt.imsave(img_path, current_state[i, :, :], cmap='gray')
-    #    # Save the entire figure as a combined image
-    #    combined_img_path = f"{save_path}/combined_frames_{t_steps}.png"
-    #    plt.savefig(combined_img_path, bbox_inches='tight', pad_inches=0.1)
-    #    # Close the matplotlib figure to free up resources
-    #    plt.close()
