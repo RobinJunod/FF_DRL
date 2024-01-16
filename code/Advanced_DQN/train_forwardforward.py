@@ -52,7 +52,7 @@ def init_feature_extractor(env,
             obs, reward, done, _, reward_unclipped = env.step(action)
             # Just store the state action pair
             memory.remember(obs, action, reward, done)
-            
+    env.close()        
     return train_feature_extractor(feature_extractor, memory, num_epochs, batch_size)
     
 def train_feature_extractor(feature_extractor, memory, num_epochs, batch_size):
@@ -89,7 +89,7 @@ class FFAgent:
                 final_exploration_step=100_000,
                 no_learning_steps=5_000,
                 ):
-        """This is the calss of the agent, it can update its neural network based on
+        """This is the class of the agent, it can update its neural network based on
         what is inside its replay memory. This separates the agent from the environemnt.
         The agent only sees what's inside its memory and learns from it. The network 'brain'
         of the agent is made of 1 Feature extractor and 1 regression layer that need to be trained.
@@ -112,9 +112,9 @@ class FFAgent:
         self.epsilon_decay_exp = self.epsilon_min**(1/self.final_exploration_step ) # Exponentional decay
         # Deep Neural Network
         self.feature_extractor = feature_extractor
-        self.regression_layer = nn.Linear(feature_size, env.action_space.n)
+        self.regression_layer = nn.Linear(feature_size, self.action_size)
         # Target init
-        self.target_regression_layer = nn.Linear(feature_size, env.action_space.n)
+        self.target_regression_layer = nn.Linear(feature_size, self.action_size)
         self.target_regression_layer.load_state_dict(self.regression_layer.state_dict())
         self.target_regression_layer.eval()
         self.optimizer = optim.Adam(self.regression_layer.parameters(), lr=1e-4)
@@ -179,7 +179,7 @@ class FFAgent:
             self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay_exp) # exp decay
         return loss.item() # Not mendatory
 
-def train_dqn_lastlayer(agent, env, feature_extractor_n,end_step=500_000):
+def train_dqn_lastlayer(agent, env, feature_extractor_n, end_step=500_000):
     
     t_steps = 0
     max_rew = 0
