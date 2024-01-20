@@ -286,7 +286,7 @@ if __name__=='__main__':
     test_loader = DataLoader(test_dataset, batch_size=batchsize, shuffle=True)
     
     FF_feature_extractor = FFConvNet()
-
+#%%
     """
     There are two approaches for batch training:
     1. Train batches for all layers. ---> straigth forward

@@ -236,7 +236,6 @@ if __name__ == '__main__':
     #    "theta_decay":(5/25)**(1/1_500),
     #    "theta_end":5,
     #}
-    
     # Forward Forward algo 
     env = gym.make("CartPole-v1")
     input_size = env.observation_space.shape[0] + 1
@@ -244,8 +243,6 @@ if __name__ == '__main__':
     # Create the forward forward network
     ff_net =  Net([input_size, 50, 20, 20])
     ff_net_trained, logs = DRL_train_network(env, ff_net, **arguments)
-    
-
     
     #%% Plot the logs
     reward_evolution, exploration_rate_evolution = logs

@@ -24,7 +24,7 @@ class DQNAgent:
         self.memory = ReplayBuffer(max_size=200_000, stack_size=4) # 1'000'000 in paper, rep mem size
         self.batch_size = 32
         self.gamma = 0.99
-        self.target_update_freq = 5_000
+        self.target_update_freq = 5_000 # 10_000 in paper
         self.epsilon = 0.5
         self.epsilon_min = 0.02
         self.final_exploration_step = 300_000 # 1'000'000 in paper, number step to stop exploring

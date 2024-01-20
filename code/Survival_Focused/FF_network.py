@@ -127,9 +127,9 @@ class Net(torch.nn.Module):
                 
 
 # import the dataset
-def dataset_import():
+def dataset_import(file_path):
     # Load the CSV file into a DataFrame
-    df = pd.read_csv('../SmallDataset.csv')
+    df = pd.read_csv(file_path)
     X = df.iloc[:, :-1].values
     Y = df.iloc[:, -1].values
     return X, Y
@@ -150,7 +150,8 @@ def neg_data_creation(x_pos):
 
 if __name__=='__main__':
     # custom dataset into np array
-    data, label =  dataset_import()
+    filepath = 'SmallDataset.csv'
+    data, label =  dataset_import(filepath)
     
     x_pos = one_hot_augmentation(data, label)
     x_neg = neg_data_creation(x_pos)
@@ -159,8 +160,8 @@ if __name__=='__main__':
     x_neg = torch.tensor(x_neg).float()
     
     # Create the network
-    net = Net([5, 20, 20, 20, 20])
-    net.train(x_pos, x_neg)
+    net = Net([5, 20, 20])
+    net.train_L(x_pos, x_neg, 200)
     
     #%% Test the network
     for i in range(len(x_pos)):
@@ -170,11 +171,11 @@ if __name__=='__main__':
     # %% Test the network without a loop
     x_test = x_neg
     x_goodness = net.predict(x_test)
-    print('rate of neg samples correctely labelled :', (x_goodness < 0).sum().item()/len(x_goodness))
+    print('Test accruacy of neg samples correctely labelled :', (x_goodness < 0).sum().item()/len(x_goodness))
     
     x_test = x_pos
     x_goodness = net.predict(x_test)
-    print('rate of pos samples correctely labelled :', (x_goodness > 0).sum().item()/len(x_goodness))
+    print('Test accruacy of pos samples correctely labelled :', (x_goodness > 0).sum().item()/len(x_goodness))
     
     
     

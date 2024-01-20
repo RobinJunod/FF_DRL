@@ -268,7 +268,9 @@ if __name__ == '__main__':
             Best_FE_score = sum_last_10_total_rewards
             Best_FE = copy(feature_extractor)
             Best_LL = copy(regression_layer)
-            
+    
+    torch.save(Best_FE.state_dict(), f'DQN_FeatureExtractor_bestweights.pth')
+    torch.save(Best_LL.state_dict(), f'DQN_RegressLayer_bestweights.pth')
     env.close()
     # Saving the experiment
     

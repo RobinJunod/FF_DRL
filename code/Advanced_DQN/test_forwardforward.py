@@ -39,9 +39,27 @@ def test(agent, env, nb_episode=10):
             agent.memory.remember(next_obs, action, reward, done)
     env.reset()
     return total_reward
+
+def test_randomagent(env, nb_episode=10):
+    t_steps = 0
+    for episode in range(nb_episode):  # You can adjust the number of episodes for testing
+        print('Start testing episode:', episode)
+        obs, _ = env.reset()
+        agent.memory.remember(obs, 0, 0, True)
+        total_reward = 0
+        done = False
+        step = 0
+        while not done:
+            step += 1
+            t_steps += 1
+            action = random.randint(0, agent.action_size - 1)
+            next_state, reward, done , _ , reward_unclipped = env.step(action)
+            env.render()
+            
+            
+        print(f'Total Reward for testing episode {episode}: {total_reward}')
     
-
-
+    env.close()
 
 #%%
 if __name__ == '__main__':
@@ -51,7 +69,7 @@ if __name__ == '__main__':
     env = BreakoutWrapper(env)
     # load feature extractor
     feature_size = 103_808 # TODO: stop hardcoding this value
-    feature_extractor_weights = 'ffconvnet_model_0.pth'
+    feature_extractor_weights = 'ffconvnet_model_1.pth'
     
     feature_extractor = FFConvNet()
     feature_extractor.load_state_dict(torch.load(feature_extractor_weights))
@@ -60,9 +78,9 @@ if __name__ == '__main__':
                     memory_max_size=100_000,
                     epsilon=0)
     
-    regression_layer_weights = 'ff_dqn_lastlayer_0.pth'
+    regression_layer_weights = 'ff_dqn_lastlayer_1.pth'
     agent.regression_layer.load_state_dict(torch.load(regression_layer_weights))
    
-    total_reward = test(agent, env, nb_episode=10)
+    total_reward = test_randomagent(env, nb_episode=15)
     env.close()
     
