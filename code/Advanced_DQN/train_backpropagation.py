@@ -21,13 +21,17 @@ class DQNAgent:
     def __init__(self):
         self.action_size = 3
         # Hyperparameters
-        self.memory = ReplayBuffer(max_size=200_000, stack_size=4) # 1'000'000 in paper, rep mem size
+        self.memory = ReplayBuffer(max_size=500_000, stack_size=4) # 1'000'000 in paper, rep mem size
         self.batch_size = 32
         self.gamma = 0.99
+<<<<<<< HEAD
         self.target_update_freq = 5_000 # 10_000 in paper
+=======
+        self.target_update_freq = 7_000
+>>>>>>> 20855591c335451fdad873cf16ca898f5a3ef8a3
         self.epsilon = 0.5
         self.epsilon_min = 0.02
-        self.final_exploration_step = 300_000 # 1'000'000 in paper, number step to stop exploring
+        self.final_exploration_step = 500_000 # 1'000'000 in paper, number step to stop exploring
         self.epsilon_decay = (1-0.1)/self.final_exploration_step # Linear decay
         self.epsilon_decay_exp = self.epsilon_min**(1/self.final_exploration_step ) # Exponentional decay
         self.no_learning_steps = 100_000
@@ -188,11 +192,11 @@ if __name__ == '__main__':
     #env = gym.make('ALE/Breakout-v5')
     env = gym.make('BreakoutNoFrameskip-v4')
     env = BreakoutWrapper(env) 
-   
+    
     # Initialize the DQN agent
     agent = DQNAgent()
     # Train DQL
-    train(agent,env, nb_epsiode=10_000, save_model=True)
+    train(agent,env, nb_epsiode=20_000, save_model=True)
 
      #%% Cell to run the test mode / inference
     env2 = gym.make('BreakoutNoFrameskip-v4', render_mode='human')
