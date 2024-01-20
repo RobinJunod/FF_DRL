@@ -59,7 +59,7 @@ class BreakoutWrapper(gym.Wrapper):
             obs, reward, _, _, info = self.env.step(action)
             rem_lives = info['lives']
             total_rewards_unclipped += reward
-            reward = np.clip(reward, -3, 3)
+            #reward = np.clip(reward, -2, 20)
             total_rewards += reward
 
         if rem_lives < 5:

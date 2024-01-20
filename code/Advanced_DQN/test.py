@@ -17,13 +17,10 @@ from replay_memory import ReplayBuffer
 
 from train_backpropagation import DQNAgent, test
 
-env = gym.make('BreakoutNoFrameskip-v4')
-env = BreakoutWrapper(env) 
 
-# Initialize the DQN agent
-agent = DQNAgent()
+
 env2 = gym.make('BreakoutNoFrameskip-v4', render_mode='human')
 env2 = BreakoutWrapper(env2)
 agent2 = DQNAgent()
-pth_path = 'model_weight_pth/dqn_breakout_q_network_insanelygood.pth'
+pth_path = 'dqn_breakout_q_network_thebest.pth'
 test(agent2, pth_path, env2, save_video=False, render=True)
