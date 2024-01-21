@@ -83,13 +83,24 @@ Test Breakout DQN with BP : `python test_backpropagation.py`
 Test Breakout DQN with FF : `python test_forwradforward.py`
 ## Results
 The DQN with BP performs good : 
+
+
 ![Cartpole FF](results/report/DQNvsRND_breakout.png)
+
+
 ![Breakout with BP](results/videos/gif_breakout.gif)
+
 
 [![Video Statndard DQN Breakout](results/videos/DQN_breakout_bp.mp4)](results/videos/DQN_breakout_bp.mp4)
 
 
+
+
 The FF early results are promissing, This part must be explorered a bit more :
+
+
 ![Cartpole FF](results/report/FF_DQN_Advanced_2ndFE.png)
+
+
 
 [![Video Forward-Forward DQN Breakout](results/videos/FFDQN_breakout.mp4)](results/videos/FFDQN_breakout.mp4)
