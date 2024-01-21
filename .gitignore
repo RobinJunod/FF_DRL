@@ -1,4 +1,3 @@
 code/Advanced_DRL/data/**
 *.pyc
 *.gz
-*.png
