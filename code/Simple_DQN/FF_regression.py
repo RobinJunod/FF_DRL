@@ -1,4 +1,5 @@
 #%%
+import argparse
 import pandas as pd
 import numpy as np
 
@@ -74,7 +75,7 @@ class Feature_extractor(torch.nn.Module):
         """
         h_pos, h_neg = x_pos, x_neg
         for i, layer in enumerate(self.layers):
-            print('training layer', i, '...')
+            # print('training layer', i, '...')
             h_pos, h_neg = layer.train(h_pos, h_neg, num_epochs)
     
     def train_B(self, x_pos, x_neg, num_epochs):
@@ -158,6 +159,14 @@ class Backprop_net(torch.nn.Module):
 #%%
 if __name__=='__main__':
     
+    # __________PARSERS__________
+    parser = argparse.ArgumentParser(description="A simple command-line parser.")
+    # Add command-line arguments
+    parser.add_argument("--train_ff", type=bool, default=True, help="if want to train the mdoel with FF")
+    parser.add_argument("--train_bp", type=bool, default=False, help="if want to train the mdoel with bp")
+    parser.add_argument("--num_epochs", type=int, default=100, help="number of epochs")
+    # Parse the command-line arguments
+    args = parser.parse_args()
     # CREATION OF THE DATASET
     X_train, X_test = dataset_GMM(n_samples= 10000, show_plot=False)
     # create dataframe
@@ -177,142 +186,126 @@ if __name__=='__main__':
     # Dimension of the FF networks layers
     dims = [4, 10, 5]
     
+    num_epochs = args.num_epochs
     #%% Train with FF algorithm
-    num_epochs = 100
-    R2_evolution = []
-    df = pd.DataFrame()
-    for n_train in range(20):
-        for epoch in range(1,num_epochs, 1):
-            # Create/train the FF net to extract features
-            feature_extractor = Feature_extractor(dims)
-            feature_extractor.train(positive_data, negative_data, num_epochs=epoch)
-            # Create the last layer for regression and train it
-            size_feature = len(feature_extractor.inference(positive_data)[0])
-            regression_layer = nn.Linear(size_feature,1)
-            criterion = nn.MSELoss()
-            optimizer = torch.optim.Adam(regression_layer.parameters(), lr=0.01)
-            for n in range(epoch):
-                # Forward pass
-                print('pos data :', positive_data.shape)
-                features = feature_extractor.inference(positive_data).float()
-                print('features :', features.shape)
-                outputs = regression_layer(features).float()  # Reshape x to a 2D tensor
-                # Compute the loss
-                loss = criterion(outputs, Y_train.view(-1, 1))  # Reshape y to a 2D tensor
-                # Backpropagation and optimization
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-            # Print the loss
-            #if (epoch + 1) % 10 == 0:
-            #    print(f'Last layer , Epoch [{epoch + 1}/{num_epochs}], Loss: {loss.item():.4f}')
-
-
-            # Test the model on the test dataset
-            test_data = torch.tensor(X_test).float()
-            pos_test_data, neg_test_data = fake_data_shuffle(test_data)
-            test_features = feature_extractor.inference(pos_test_data).float()
-            test_outputs = regression_layer(test_features).float()
-            # R2 metric for this regression problem
-            y_true = Y_test.numpy()
-            y_pred = test_outputs.detach().numpy()
-            r2 = r2_score(y_true, y_pred)
-            print('R2 score : ', r2)
-            R2_evolution.append((epoch,r2))
+    if args.train_ff:
+        R2_evolution = []
+        df = pd.DataFrame()
+        for n_train in range(20): # train with 20 diff FeatureExctractor
+            for epoch in range(1,num_epochs, 1):
+                # Create/train the FF net to extract features
+                feature_extractor = Feature_extractor(dims)
+                feature_extractor.train_L(positive_data, negative_data, num_epochs=epoch)
+                # Create the last layer for regression and train it
+                size_feature = len(feature_extractor.inference(positive_data)[0])
+                regression_layer = nn.Linear(size_feature,1)
+                criterion = nn.MSELoss()
+                optimizer = torch.optim.Adam(regression_layer.parameters(), lr=0.01)
+                for n in range(epoch):
+                    # Forward pass
+                    # print('pos data :', positive_data.shape)
+                    features = feature_extractor.inference(positive_data).float()
+                    # print('features :', features.shape)
+                    outputs = regression_layer(features).float()  # Reshape x to a 2D tensor
+                    # Compute the loss
+                    loss = criterion(outputs, Y_train.view(-1, 1))  # Reshape y to a 2D tensor
+                    # Backpropagation and optimization
+                    optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step()
+                # Test the model on the test dataset
+                test_data = torch.tensor(X_test).float()
+                pos_test_data, neg_test_data = fake_data_shuffle(test_data)
+                test_features = feature_extractor.inference(pos_test_data).float()
+                test_outputs = regression_layer(test_features).float()
+                # R2 metric for this regression problem
+                y_true = Y_test.numpy()
+                y_pred = test_outputs.detach().numpy()
+                r2 = r2_score(y_true, y_pred)
+                print(f'FE {n_train}, epoch{epoch}, R2 score : {r2}')
+                R2_evolution.append((epoch,r2))
+            
+            if n_train==1:
+                # Save evolution R2 score
+                df = pd.DataFrame(R2_evolution, columns=['epoch', 'r2score'])
+            else:
+                _, r2 = zip(*R2_evolution)
+                df[f'r2score{n_train}'] = r2
+            
+            R2_evolution.clear()
         
-        if n_train==1:
-            # Save evolution R2 score
-            df = pd.DataFrame(R2_evolution, columns=['epoch', 'r2score'])
-        else:
-            _, r2 = zip(*R2_evolution)
-            df[f'r2score{n_train}'] = r2
+        # Save the DataFrames to a CSV file
+        df.to_csv(f'../results/FF_Qlearning/logs/r2_regresProblem_{epoch}_20.csv', index=False)
         
-        R2_evolution.clear()
-    
-    # Save the DataFrames to a CSV file
-    df.to_csv(f'../results/FF_Qlearning/logs/r2_regresProblem_{epoch}_20.csv', index=False)
-    
-    #XX%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     #%% Train  with BackPropagation
-    R2_evolution_bp = []
-    num_epochs = 100
-    df1 = pd.DataFrame()
-    for n_train in range(20):  
-        backprop_network = Backprop_net(dims)
-        criterion_bp = nn.MSELoss()
-        optimizer_bp = torch.optim.Adam(backprop_network.parameters(), lr=0.01)
-        for epoch in range(num_epochs):
-            # Forward pass
-            outputs = backprop_network(positive_data).float()  # Reshape x to a 2D tensor
-            # Compute the loss
-            loss = criterion_bp(outputs, Y_train.view(-1, 1))  # Reshape y to a 2D tensor
-            # Backpropagation and optimization
-            optimizer_bp.zero_grad()
-            loss.backward()
-            optimizer_bp.step()
-            # Print the loss
-            #if (epoch + 1) % 100 == 0:
-            #    print(f'Last layer , Epoch [{epoch + 1}/{num_epochs}], Loss: {loss.item():.4f}')
+    if args.train_bp:
+        R2_evolution_bp = []
+        df1 = pd.DataFrame()
+        for n_train in range(20):  
+            backprop_network = Backprop_net(dims)
+            criterion_bp = nn.MSELoss()
+            optimizer_bp = torch.optim.Adam(backprop_network.parameters(), lr=0.01)
+            for epoch in range(num_epochs):
+                # Forward pass
+                outputs = backprop_network(positive_data).float()  # Reshape x to a 2D tensor
+                # Compute the loss
+                loss = criterion_bp(outputs, Y_train.view(-1, 1))  # Reshape y to a 2D tensor
+                # Backpropagation and optimization
+                optimizer_bp.zero_grad()
+                loss.backward()
+                optimizer_bp.step()
+                # Print the loss
+                #if (epoch + 1) % 100 == 0:
+                #    print(f'Last layer , Epoch [{epoch + 1}/{num_epochs}], Loss: {loss.item():.4f}')
 
-            # Test the model on the test dataset
-            test_data = torch.tensor(X_test).float()
-            test_outputs = backprop_network(test_data).float()
-            # R2 metric for this regression problem
-            y_true = Y_test.numpy()
-            y_pred = test_outputs.detach().numpy()
-            r2 = r2_score(y_true, y_pred)
-            print('R2 score : ', r2)
-            R2_evolution_bp.append((epoch, r2))
-            
-        if n_train==1:
-            # Save evolution R2 score
-            df1 = pd.DataFrame(R2_evolution_bp, columns=['epoch', 'r2score'])
-            print(df1)
-        else:
-            _, r2 = zip(*R2_evolution_bp)
-            df1[f'r2score{n_train}'] = r2
-        R2_evolution_bp.clear()
-    # Save the DataFrames to a CSV file
-    df1.to_csv(f'../results/FF_Qlearning/logs/r2_regresProblem_bp_{epoch}_20.csv', index=False)
-    
+                # Test the model on the test dataset
+                test_data = torch.tensor(X_test).float()
+                test_outputs = backprop_network(test_data).float()
+                # R2 metric for this regression problem
+                y_true = Y_test.numpy()
+                y_pred = test_outputs.detach().numpy()
+                r2 = r2_score(y_true, y_pred)
+                print('R2 score : ', r2)
+                R2_evolution_bp.append((epoch, r2))
+                
+            if n_train==1:
+                # Save evolution R2 score
+                df1 = pd.DataFrame(R2_evolution_bp, columns=['epoch', 'r2score'])
+                print(df1)
+            else:
+                _, r2 = zip(*R2_evolution_bp)
+                df1[f'r2score{n_train}'] = r2
+            R2_evolution_bp.clear()
+        # Save the DataFrames to a CSV file
+        df1.to_csv(f'../results/FF_Qlearning/logs/r2_regresProblem_bp_{epoch}_20.csv', index=False)
+        
     
     #%% Train with linear model
-    regression_layer = nn.Linear(4,1)
-    criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(regression_layer.parameters(), lr=0.01)
-
-    # Train the model using the FF algorithm
-    num_epochs = 300
-    for epoch in range(num_epochs):
-        # Forward pass
-        outputs = regression_layer(positive_data).float()
-        # Compute the loss
-        loss = criterion(outputs, Y_train.view(-1, 1))  # Reshape y to a 2D tensor
-        # Backpropagation and optimization
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        # Print the loss
-        if (epoch + 1) % 100 == 0:
-            print(f'Last layer , Epoch [{epoch + 1}/{num_epochs}], Loss: {loss.item():.4f}')
-
-
-    # Test the model on the test dataset
-    test_data = torch.tensor(X_test).float()
-    pos_test_data, neg_test_data = fake_data_shuffle(test_data)
-    test_outputs = regression_layer(test_data).float()
-    # R2 metric for this regression problem
-    y_true = Y_test.numpy()
-    y_pred = test_outputs.detach().numpy()
-    r2 = r2_score(y_true, y_pred)
-    print('R2 score : ', r2)
-    #%% TODO
-    #5 - train cartpole with FF and dimensionality shuffling
-    #6 - explain in the report that we are trying to make the feature extractor 
-    # learn the relation between the inputs. So in any case, dimensionality 
-    # shuffling will not work with uncorrelated inputs. Also, explain that it 
-    # is important to use the output of all the layers, as the first layers could 
-    # have already learned everything about the relation between inputs
-    pass
+    #regression_layer = nn.Linear(4,1)
+    #criterion = nn.MSELoss()
+    #optimizer = torch.optim.Adam(regression_layer.parameters(), lr=0.01)
+    ## Train the model using the FF algorithm
+    #num_epochs = 300
+    #for epoch in range(num_epochs):
+    #    # Forward pass
+    #    outputs = regression_layer(positive_data).float()
+    #    # Compute the loss
+    #    loss = criterion(outputs, Y_train.view(-1, 1))  # Reshape y to a 2D tensor
+    #    # Backpropagation and optimization
+    #    optimizer.zero_grad()
+    #    loss.backward()
+    #    optimizer.step()
+    #    # Print the loss
+    #    if (epoch + 1) % 100 == 0:
+    #        print(f'Last layer , Epoch [{epoch + 1}/{num_epochs}], Loss: {loss.item():.4f}')
+    ## Test the model on the test dataset
+    #test_data = torch.tensor(X_test).float()
+    #pos_test_data, neg_test_data = fake_data_shuffle(test_data)
+    #test_outputs = regression_layer(test_data).float()
+    ## R2 metric for this regression problem
+    #y_true = Y_test.numpy()
+    #y_pred = test_outputs.detach().numpy()
+    #r2 = r2_score(y_true, y_pred)
+    #print('R2 score : ', r2)
     

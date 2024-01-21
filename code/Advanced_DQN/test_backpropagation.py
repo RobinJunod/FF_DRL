@@ -4,13 +4,11 @@ import pandas as pd
 import torch
 import random
 
-import matplotlib.pyplot as plt
-
 from env_wrapper import BreakoutWrapper
 from train_backpropagation import DQNAgent
 
 
-def test(agent, pth_path, env, nb_epsiode=10, save_video=False, render=True):
+def test(agent, pth_path, env, nb_epsiode=10, render=True):
     # Load the trained model
     agent.q_network.load_state_dict(torch.load(pth_path))
     agent.q_network.eval()
@@ -72,17 +70,14 @@ def test_randomagent(env, nb_epsiode=10, save_video=False, render=False):
     logs.to_csv(f'logs/test_rndAgent_{nb_epsiode}ep.csv', index=False)
     env.close()
 
-def plot_test_results():
+def plot_results():
     pass
 
 #%%
 if __name__ == '__main__':
-
     env = gym.make('BreakoutNoFrameskip-v4', render_mode='human')
     #env2 = gym.make('BreakoutNoFrameskip-v4')
     env = BreakoutWrapper(env)
     agent = DQNAgent()
-    pth_path = 'model_weight_pth/dqn_breakout_q_network_insanelygood.pth'
-    test(agent, pth_path, env, nb_epsiode=10, save_video=False, render=False)
-    
-    #%%
+    pth_path = 'model_weights_BP/dqn_breakout_q_network_thebest.pth'
+    test(agent, pth_path, env, nb_epsiode=10)

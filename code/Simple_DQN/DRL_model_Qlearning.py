@@ -231,12 +231,13 @@ def test_policy(env, feature_extractor, regression_layer, save_vid=True):
 if __name__ == '__main__':
 
 
+    save_model=True
+    save_logs=False
+    
     # Forward Forward algo 
     env = gym.make("CartPole-v1")
-    
     # Initialize Feature extractor
     input_size = env.observation_space.shape[0]
-     
     # Initalize the postiive adn negative data
     positive_data, _ = play_random(env)
     positive_data, negative_data = fake_data_shuffle(positive_data)    
@@ -246,10 +247,10 @@ if __name__ == '__main__':
     Best_FE = None
     Best_LL = None
     
+    # Train feature extractor
+    feature_extractor = Feature_extractor([input_size, 20, 10, 10])  
     for ff_train in range(8):
         print ('New feature extractor training n° ', ff_train)
-        # Train feature extractor
-        feature_extractor = Feature_extractor([input_size, 20, 10, 10, 10])  
         feature_extractor.train(positive_data, negative_data, num_epochs=150)
         # Train last layer and get new states
         # Initialize Q one layer net
@@ -261,7 +262,8 @@ if __name__ == '__main__':
         # Create a Pandas DataFrame from the lists
         df1 = pd.DataFrame(reward_evolution, columns=['episode_R', 'Reward Evolution'])
         # Save the DataFrames to a CSV file
-        df1.to_csv(f'../results/FF_Qlearning/logs/reward_config_{ff_train}_{len(positive_data)}.csv', index=False)
+        if save_logs:
+            df1.to_csv(f'../results/FF_Qlearning/logs/reward_config_{ff_train}_{len(positive_data)}.csv', index=False)
         # Save the best FE for the inference part
         sum_last_10_total_rewards = sum([total_reward for _, total_reward in reward_evolution[-10:]])
         if sum_last_10_total_rewards > Best_FE_score:
@@ -276,42 +278,39 @@ if __name__ == '__main__':
     
     
     #%% Test the policy and render it
-
-
-    #env = gym.make('CartPole-v1', render_mode='rgb_array_list')
+    
     env = gym.make('CartPole-v1', render_mode='human')    
     test_policy(env, Best_FE, Best_LL, save_vid=False)
-    
-    
-    #%% RANDOM STUFF TO 
-    input_size = env.observation_space.shape[0] 
-    # Create the forward forward network
-    ff_net =  feature_extractor([input_size, 10, 10])
-    # Generate real states
-    real_states, rnd_action_rewards = play_random(env)
-    # Create fake states
-    real_data, fake_data = fake_data_shuffle(real_states)
-    
-    # TEST FAKE DATA GENERATOR
-    train_realData_l = 0.8 * len(real_data)
-    train_fakeData_l = 0.8 * len(fake_data)
-    
-    train_realData = real_data[:int(train_realData_l)]
-    train_fakeData = fake_data[:int(train_fakeData_l)]
-    
-    test_realData = real_data[int(train_realData_l):]
-    test_fakeData = fake_data[int(train_fakeData_l):]
-    
-    # Train the network on these real and fake states
-    ff_net.train(train_realData, train_fakeData, num_epochs=100)
-    # Dataset split
-    pos_data_result = ff_net.predict(test_realData)
-    print('pos data: ', pos_data_result)
-    print('pos data mean: ', pos_data_result.mean())
-    print('pos data std: ', pos_data_result.std())
 
-    neg_data_result = ff_net.predict(test_fakeData)
-    print('neg data: ', neg_data_result)
-    print('neg data mean: ', neg_data_result.mean())
-    print('neg data std: ', neg_data_result.std())
+    
+    ##%% RANDOM STUFF TO 
+    #input_size = env.observation_space.shape[0] 
+    ## Create the forward forward network
+    #ff_net =  feature_extractor([input_size, 10, 10])
+    ## Generate real states
+    #real_states, rnd_action_rewards = play_random(env)
+    ## Create fake states
+    #real_data, fake_data = fake_data_shuffle(real_states)
+    
+    ## TEST FAKE DATA GENERATOR
+    #train_realData_l = 0.8 * len(real_data)
+    #train_fakeData_l = 0.8 * len(fake_data)
+    #
+    #train_realData = real_data[:int(train_realData_l)]
+    #train_fakeData = fake_data[:int(train_fakeData_l)]
+    #
+    #test_realData = real_data[int(train_realData_l):]
+    #test_fakeData = fake_data[int(train_fakeData_l):]
+    #
+    ## Train the network on these real and fake states
+    #ff_net.train(train_realData, train_fakeData, num_epochs=100)
+    ## Dataset split
+    #pos_data_result = ff_net.predict(test_realData)
+    #print('pos data: ', pos_data_result)
+    #print('pos data mean: ', pos_data_result.mean())
+    #print('pos data std: ', pos_data_result.std())
+    #neg_data_result = ff_net.predict(test_fakeData)
+    #print('neg data: ', neg_data_result)
+    #print('neg data mean: ', neg_data_result.mean())
+    #print('neg data std: ', neg_data_result.std())
     
