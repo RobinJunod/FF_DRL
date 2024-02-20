@@ -1,4 +1,13 @@
 # FF_DRL
+
+- train DQN cartpole with SB3
+- train DQN cartpole with FF
+- train DQN breakout with SB3
+- train DQN breakout with FF (3 methods for generating negative data)
+- ablation studies
+- (blurring on MNIST and convolutional network, to show that blurring works as a technique to generate negative data)
+
+
 This Repo is an attempt to solve gym env using the forwardforward leanring metho from g.hinton. Autors Robin Junod, supervised by Giulio Romanelli. This is a semester project at the EPFL, Master (robotic/datascience). Keywords : Breakout , Forward-Forward, Cartpole, Atari games, DQN ,Double DQN, replay memeory
 
 It can be devided in 3 parts
