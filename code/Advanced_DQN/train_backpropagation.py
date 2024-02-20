@@ -1,16 +1,13 @@
 # %%
 import gym
-import time
 
 import random
 import numpy as np
 import pandas as pd
 import torch
-import torch.nn as nn
 import torch.optim as optim
 import torchvision.transforms as T
 import torch.nn.functional as F
-import matplotlib.pyplot as plt
 
 from model import QNetwork
 from env_wrapper import BreakoutWrapper
