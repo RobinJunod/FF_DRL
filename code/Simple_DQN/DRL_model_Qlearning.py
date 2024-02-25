@@ -251,7 +251,7 @@ if __name__ == '__main__':
     feature_extractor = Feature_extractor([input_size, 20, 10, 10])  
     for ff_train in range(8):
         print ('New feature extractor training n° ', ff_train)
-        feature_extractor.train(positive_data, negative_data, num_epochs=150)
+        feature_extractor.train_L(positive_data, negative_data, num_epochs=150)
         # Train last layer and get new states
         # Initialize Q one layer net
         feature_size = len(feature_extractor.inference(positive_data)[0])
