@@ -263,7 +263,7 @@ if __name__ == '__main__':
         df1 = pd.DataFrame(reward_evolution, columns=['episode_R', 'Reward Evolution'])
         # Save the DataFrames to a CSV file
         if save_logs:
-            df1.to_csv(f'../results/FF_Qlearning/logs/reward_config_{ff_train}_{len(positive_data)}.csv', index=False)
+            df1.to_csv(f'../results/FF_Qlearning/logs/reward_config_{ff_train}{len(positive_data)}.csv', index=False)
         # Save the best FE for the inference part
         sum_last_10_total_rewards = sum([total_reward for _, total_reward in reward_evolution[-10:]])
         if sum_last_10_total_rewards > Best_FE_score:

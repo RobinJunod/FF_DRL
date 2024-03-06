@@ -81,7 +81,6 @@ class FFLayer(nn.Linear):
 
     
 class ForwardForwardMLP(nn.Module):
-    
     def __init__(self, dims):
         super(ForwardForwardMLP, self).__init__()
         self.layers = []
@@ -101,7 +100,7 @@ class ForwardForwardMLP(nn.Module):
         features = th.FloatTensor()
         with th.no_grad():
             for _, layer in enumerate(self.layers):
-                obs_next= layer.forward(obs)
+                obs_next = layer.forward(obs)
                 obs = obs_next
                 if obs.dim() == 1:
                     # Inference for 1 data (1 state)
@@ -124,6 +123,18 @@ class ForwardForwardMLP(nn.Module):
             #print(f'training epoch : {epoch}')
             for i, layer in enumerate(self.layers):
                 h_pos, h_neg = layer.train_ff(h_pos, h_neg, 1)
+                
+    def train_ll(self, x_pos, x_neg, num_epochs):
+        """ Train network with forward-forward layer by layer
+        Args:
+            x_pos (matrix of datapoints): positive data
+            x_neg (matrix of datapoints): negative data
+            num_epochs (int): number of epochs
+        """
+        h_pos, h_neg = x_pos, x_neg
+        for i, layer in enumerate(self.layers):
+            print(f'train layer {i}')
+            h_pos, h_neg = layer.train_ff(h_pos, h_neg, num_epochs)
                 
     def goodness(self, input, Display=False):
         """Return the goodness of a given input

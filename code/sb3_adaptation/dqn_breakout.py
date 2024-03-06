@@ -9,11 +9,23 @@ from stable_baselines3.common.env_util import make_atari_env
 from stable_baselines3.common.vec_env import VecFrameStack
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 
-from ff_cnn import FeatureExtractorForwardForward, FFConvNet
+from ff_cnn import ForwardForwardCNN, negative_data_gen
 
 
-models_dir = "DQN"
-logdir = "logs"
+
+
+class CustomSB3FeatureExtractor(BaseFeaturesExtractor):
+    def __init__(self, observation_space, feature_extractor_model : ForwardForwardCNN):
+        features_dim = feature_extractor_model._dim_output
+        super(CustomSB3FeatureExtractor, self).__init__(observation_space, features_dim=features_dim)  # Set your features_dim based on your model's output 96
+        self.feature_extractor = feature_extractor_model
+
+    def forward(self, observations):
+        return self.feature_extractor(observations)
+
+
+models_dir = "DQN_breakout"
+logdir = "logs_breakout"
 if not os.path.exists(models_dir):
     os.makedirs(models_dir)
 if not os.path.exists(logdir):
@@ -28,56 +40,14 @@ env = VecFrameStack(env, n_stack=4)
 env.reset()
 
 
-class CustomCNN(BaseFeaturesExtractor):
-    """
-    :param observation_space: (gym.Space)
-    :param features_dim: (int) Number of features extracted.
-        This corresponds to the number of unit for the last layer.
-    """
 
-    def __init__(self, observation_space: spaces.Box, features_dim: int = 256):
-        super().__init__(observation_space, features_dim)
-        # We assume CxHxW images (channels first)
-        # Re-ordering will be done by pre-preprocessing or wrapper
-        n_input_channels = observation_space.shape[0]
-        self.cnn = nn.Sequential(
-            nn.Conv2d(n_input_channels, 32, kernel_size=8, stride=4, padding=0),
-            nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=0),
-            nn.ReLU(),
-            nn.Flatten(),
-        )
-
-        # Compute shape by doing one forward pass
-        with th.no_grad():
-            n_flatten = self.cnn(
-                th.as_tensor(observation_space.sample()[None]).float()
-            ).shape[1]
-
-        self.linear = nn.Sequential(nn.Linear(n_flatten, features_dim), nn.ReLU())
-
-    def forward(self, observations: th.Tensor) -> th.Tensor:
-        #print(observations.shape[0])
-        #print(th.arange(observations.shape[0]*128, dtype=th.float).view(observations.shape[0], -1).shape)# test for cst function
-        #print(self.linear(self.cnn(observations)).shape)
-        return th.arange(observations.shape[0]*128, dtype=th.float).view(observations.shape[0], -1)
-
-## Creating the custom network
-#custom_policy_kwargs = {
-#    "features_extractor_class": CustomCNN,
-#    "features_extractor_kwargs": {"features_dim": 128},  # Output dimension
-#    "net_arch": []  # No hidden layers
-#}
-
+feature_extractor = ForwardForwardCNN()
 
 custom_policy_kwargs = {
-    "features_extractor_class": FFConvNet,
-    "features_extractor_kwargs": {"features_dim": 51_904},  # Output dimension
+    "features_extractor_class": CustomSB3FeatureExtractor,
+    "features_extractor_kwargs": {"feature_extractor_model": feature_extractor},
     "net_arch": []  # No hidden layers
 }
-
-
-
 
 model = DQN("MlpPolicy",
             env,
@@ -94,6 +64,57 @@ model = DQN("MlpPolicy",
             optimize_memory_usage=False,
             verbose=0,
             tensorboard_log=logdir)
+
+
+
+
+# features : only a tensor (no gradient)
+for fe in range(10): # loop the nb of features extractor to train
+    print('Start training feature extractor :', fe)
+    # Train the model (the feature extractor's weights will remain frozen if not included in the optimizer)
+    model.learn(total_timesteps=200_000)
+    
+    # get the positive samples from mem buff 
+    positive_data = model.replay_buffer.observations.reshape(10000, 4)
+    positive_data = th.from_numpy(positive_data)
+    positive_data, negative_data = negative_data_gen(positive_data)
+    
+    feature_extractor.train_ff(positive_data, negative_data, num_epochs=300)
+    
+    custom_policy_kwargs = {
+    "features_extractor_class": CustomSB3FeatureExtractor,
+    "features_extractor_kwargs": {"feature_extractor_model": feature_extractor},
+    "net_arch": []  # No hidden layers
+    }
+    
+    model = DQN("MlpPolicy", 
+                env,
+                policy_kwargs=custom_policy_kwargs,
+                learning_rate=1e-4,
+                buffer_size=10_000,
+                batch_size=32,
+                learning_starts=1_000,
+                target_update_interval=1_000,
+                train_freq=4,
+                gradient_steps=1,
+                exploration_fraction=0.5,
+                exploration_final_eps=0.01,
+                optimize_memory_usage=False,
+                verbose=0,
+                tensorboard_log=logdir)
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
