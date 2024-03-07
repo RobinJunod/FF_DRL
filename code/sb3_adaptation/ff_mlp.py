@@ -65,7 +65,7 @@ class FFLayer(nn.Linear):
     
     def train_ff(self, x_pos, x_neg, num_epochs):
         for _ in range(num_epochs):
-            g_pos = self.forward(x_pos).pow(2).mean(1)
+            g_pos = self.forward(x_pos).pow(2).mean(1) # goodness without substraction of threshold
             g_neg = self.forward(x_neg).pow(2).mean(1)
             # The following loss pushes pos (neg) samples to
             # values larger (smaller) than the self.threshold.
