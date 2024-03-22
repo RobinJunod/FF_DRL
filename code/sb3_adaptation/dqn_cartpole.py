@@ -40,6 +40,7 @@ if __name__ == '__main__':
     # Initialize your environment
     env = make_vec_env('CartPole-v1', n_envs=1)
     
+    # Create a FE with 3 hidden layers of 50, 20, 20 neurons
     feature_extractor = ForwardForwardMLP(dims=[4, 50, 20, 20])
     
     custom_policy_kwargs = {
@@ -47,24 +48,6 @@ if __name__ == '__main__':
         "features_extractor_kwargs": {"feature_extractor_model": feature_extractor},
         "net_arch": []  # No hidden layers
     }
-
-
-    # Initialize the model with the custom feature extractor
-    #model = DQN("MlpPolicy", 
-    #            env,
-    #            policy_kwargs=custom_policy_kwargs,
-    #            learning_rate=1e-4,
-    #            buffer_size=10_000,
-    #            batch_size=32,
-    #            learning_starts=1_000,
-    #            target_update_interval=50,
-    #            train_freq=4,
-    #            gradient_steps=1,
-    #            exploration_fraction=0.5,
-    #            exploration_final_eps=0.01,
-    #            optimize_memory_usage=False,
-    #            verbose=0,
-    #            tensorboard_log=logdir)
     
     model = DQN("MlpPolicy", 
                 env,
