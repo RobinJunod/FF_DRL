@@ -6,7 +6,7 @@ import torch.nn as nn
 
 import gym
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
-from dqn_sb3 import DQN
+from code.sb3_adaptation.dqn_continous import DQN
 from stable_baselines3.common.env_util import make_vec_env
 
 from ff_mlp import ForwardForwardMLP, negative_shuffling
