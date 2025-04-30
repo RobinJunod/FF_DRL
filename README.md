@@ -7,12 +7,8 @@ Keywords : Breakout , Forward-Forward, Cartpole, Atari games, DQN ,Double DQN, r
 
 Autors Robin Junod, supervised by Giulio Romanelli. 
 
+<img src="results/videos/gif_breakout.gif" alt="Cartpole FF" width="150%">
 
-It can be devided in 3 parts
-
-1 survival focused , cartpole 
-2 DQN , cartpole 
-3 DQN with CNN, breakout
 
 ## Installation and depedencies
 packages needed: pytorch, sklearn, pandas, numpy, gymnasium, gym atari (New version), matplotlib
