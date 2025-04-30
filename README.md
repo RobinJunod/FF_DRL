@@ -71,7 +71,7 @@ TODO
 ## Results
 ![Cartpole FF](results/FF_Qlearning/10_training_DQL_results.png)
 
-![Breakout with BP](results/videos/500_steps.gif)
+![Breakout with BP](results/videos/500steps.gif)
 
 [![Video DQN Cartpole FF](results/videos/500steps.mp4)](results/videos/500steps.mp4)
 
