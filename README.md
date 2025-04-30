@@ -69,8 +69,9 @@ FF_DRL/code/Simple_DQN/DRL_model_Qlearning.py look for the test_policy
 
 
 ## Results
-<img src="results/FF_Qlearning/10_training_DQL_results.png" alt="Cartpole FF" width="50%">
 
+
+<img src="results/FF_Qlearning/10_training_DQL_results.png" alt="Cartpole FF" width="50%">
 
 ![Breakout with BP](results/videos/500steps.gif)
 
@@ -91,12 +92,13 @@ Train Breakout DQN with FF : `python train_forwardforward.py`
 Test Breakout DQN with BP : `python test_backpropagation.py`
 
 Test Breakout DQN with FF : `python test_forwradforward.py`
+
 ## Results
+
 The DQN with BP performs good : 
 
 
-![Cartpole FF](results/report/DQNvsRND_breakout.png)
-
+<img src="results/report/DQNvsRND_breakout.png" alt="Cartpole FF" width="50%">
 
 ![Breakout with BP](results/videos/gif_breakout.gif)
 
@@ -110,7 +112,6 @@ The FF early results are promissing, This part must be explorered a bit more :
 
 
 ![Cartpole FF](results/report/FF_DQN_Advanced_2ndFE.png)
-
 
 
 [![Video Forward-Forward DQN Breakout](results/videos/FFDQN_breakout.mp4)](results/videos/FFDQN_breakout.mp4)
