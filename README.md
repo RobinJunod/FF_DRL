@@ -1,4 +1,4 @@
-# Alternatives to backpropagation for Reinforcement  Learning
+# Alternative to backpropagation for Reinforcement  Learning
 
 Forward-Froward Algorithm from G. Hinton used for Reinforcement learning.
 This is a semester project at the EPFL, Master (robotic/datascience).
@@ -16,12 +16,11 @@ It can be devided in 3 parts
 
 ## Installation and depedencies
 packages needed: pytorch, sklearn, pandas, numpy, gymnasium, gym atari (New version), matplotlib
-
 To have the exact same env : `conda env create -f environment.yml`, `conda activate my_project_env`
-
 
 # Part 1 : survival-focused
 Promissing results have been achieved with a really straightfowrad implementation on the simple cartpole env. Go in the folder code/Survival_Focused
+
 ## Run the training phase
 Run the fowrad-forward network train on vanilla ds : `python FF_network.py`
 
@@ -66,10 +65,12 @@ This scripts comes with the follwing parsers
 Run the forwrad-forward DQN : `python DRL_model_Qlearning.py`
 
 ## Run the inference 
-TODO
+FF_DRL/code/Simple_DQN/DRL_model_Qlearning.py look for the test_policy
+
 
 ## Results
-![Cartpole FF](results/FF_Qlearning/10_training_DQL_results.png)
+<img src="results/FF_Qlearning/10_training_DQL_results.png" alt="Cartpole FF" width="50%">
+
 
 ![Breakout with BP](results/videos/500steps.gif)
 
