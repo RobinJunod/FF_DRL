@@ -1,6 +1,6 @@
-# FF_DRL
+# Alternatives to backpropagation for Reinforcement  Learning
 
-Forward-Froward Algorithm from G. Hinton used for Reinforcment learning.
+Forward-Froward Algorithm from G. Hinton used for Reinforcement learning.
 This is a semester project at the EPFL, Master (robotic/datascience).
 
 Keywords : Breakout , Forward-Forward, Cartpole, Atari games, DQN ,Double DQN, replay memeory
@@ -70,6 +70,8 @@ TODO
 
 ## Results
 ![Cartpole FF](results/FF_Qlearning/10_training_DQL_results.png)
+
+![Breakout with BP](results/videos/500_steps.gif)
 
 [![Video DQN Cartpole FF](results/videos/500steps.mp4)](results/videos/500steps.mp4)
 
