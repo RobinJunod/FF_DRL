@@ -94,8 +94,6 @@ Test Breakout DQN with FF : `python test_forwradforward.py`
 The DQN with BP performs good : 
 
 
-<img src="results/report/DQNvsRND_breakout.png" alt="Cartpole FF" width="30%">
-
 ![Breakout with BP](results/videos/gif_breakout.gif)
 
 
