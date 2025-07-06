@@ -105,7 +105,6 @@ The DQN with BP performs good :
 The FF early results are promissing, This part must be explorered a bit more :
 
 
-![Cartpole FF](results/report/FF_DQN_Advanced_2ndFE.png)
-
+<img src="results/report/FF_DQN_Advanced_2ndFE.png" alt="Cartpole res" width="50%">
 
 [![Video Forward-Forward DQN Breakout](results/videos/FFDQN_breakout.mp4)](results/videos/FFDQN_breakout.mp4)
