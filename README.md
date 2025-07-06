@@ -44,7 +44,7 @@ in the file DRL_model_SurvivalFocused.py their is the function : test_policy(env
 [![Video SurvFocused Cartpole](results/videos/survFocused.mp4)](results/videos/survFocused.mp4)
 <img src="results/report/surv-focused_vs_rnd.png" alt="Cartpole survvsrnd" width="50%">
 
-# Part 2 : simple DQN
+# Part 2 : DQN which learns with Forward Forward algorithm
 This adapts the FF to the well knwon DQN algorithm. It also proposes a way to solve a regression task with FF.
 
 ## Run the training phase
@@ -107,3 +107,65 @@ The FF early results are promissing, This part must be explorered a bit more :
 <img src="results/report/FF_DQN_Advanced_2ndFE.png" alt="Cartpole res" width="50%">
 
 [![Video Forward-Forward DQN Breakout](results/videos/FFDQN_breakout.mp4)](results/videos/FFDQN_breakout.mp4)
+
+
+# 🚀 Forward-Forward RL: Backprop-Free Deep Reinforcement Learning
+
+> **EPFL Project · Robotics & Data Science**  
+> **Author :** Robin Junod · **Supervisor :** Giulio Romanelli
+
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)  [![PyTorch](https://img.shields.io/badge/pytorch-2.2-orange)](https://pytorch.org/)  [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
+*Re-imagining Deep Q-Learning without gradients—powered by Geoffrey Hinton’s **Forward-Forward** Algorithm.*
+
+---
+
+## ✨ Why this repo might grab your attention
+
+- **Gradient-free training** for RL — no back-prop
+- Three **self-contained experiments**  
+  1. **Survival-Focused Algo (Vanilla CartPole)**  
+  2. **DDQN on CartPole (Vector-World)**  
+  3. **DDQN on Breakout (Image/CNN World)**
+- End-to-end Atari self playing agent (Breakout 🕹) + classic control (CartPole)
+- Clean, reproducible code with  **PyTorch**, **Gymnasium**, <abbr title="Weights & Biases">wandb</abbr> logging
+
+---
+
+## 🎥 Results Demo Breakout
+
+![Breakout with BP](results/videos/500steps.gif)
+<p align="center">
+  <img src="results/videos/500steps.gif" alt="Cartpole" width="65%">
+</p>
+
+<p align="center">
+  <img src="results/videos/gif_breakout.gif" alt="Breakout BP" width="65%">
+</p>
+
+
+---
+
+## 🗺️ Repo Tour
+
+| Folder | Experiment |
+|--------|------------|
+| **code/Survival_Focused** | **1 · Survival-Focused Algo (Vanilla CartPole)** |
+| **code/Simple_DQN**       | **2 · DDQN on CartPole (Vector-World)** |
+| **code/Advanced_DQN**     | **3 · DDQN on Breakout (Image/CNN World)** |
+| **results/**              | 📊 Plots, 📽 GIFs & videos |
+
+---
+
+## ⚡ Quick-Start
+
+```bash
+# 1 — clone
+git clone https://github.com/<your-username>/forward-forward-rl.git
+cd forward-forward-rl
+
+# 2 — create *identical* environment
+conda env create -f environment.yml
+conda activate ff_rl
+
+## Detailed Results
