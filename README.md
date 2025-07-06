@@ -23,7 +23,6 @@
 
 ## 🎥 Results Demo Breakout
 
-![Breakout with BP](results/videos/500steps.gif)
 <p align="center">
   <img src="results/videos/500steps.gif" alt="Cartpole" width="65%">
 </p>
