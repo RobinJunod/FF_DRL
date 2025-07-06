@@ -42,8 +42,7 @@ in the file DRL_model_SurvivalFocused.py their is the function : test_policy(env
 
 ## Results
 [![Video SurvFocused Cartpole](results/videos/survFocused.mp4)](results/videos/survFocused.mp4)
-![FF vs Rnd](results/report/surv-focused_vs_rnd.png)
-
+<img src="results/report/surv-focused_vs_rnd.png" alt="Cartpole survvsrnd" width="50%">
 
 # Part 2 : simple DQN
 This adapts the FF to the well knwon DQN algorithm. It also proposes a way to solve a regression task with FF.
