@@ -17,7 +17,7 @@
   2. **DDQN on CartPole (Vector-World)**  
   3. **DDQN on Breakout (Image/CNN World)**
 - End-to-end Atari self playing agent (Breakout 🕹) + classic control (CartPole)
-- Clean, reproducible code with  **PyTorch**, **Gymnasium**, <abbr title="Weights & Biases">wandb</abbr> logging
+- Reproducible code with  **PyTorch**, **Gymnasium**
 
 ---
 
