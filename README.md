@@ -59,10 +59,13 @@ conda activate ...
 
 
 ## Detailed Results
-Take a look at the pdf report.(results/Forward_Forward_algorithm_for_reinforcement_learning.pdf)
+[Take a look at the PDF report](results/Forward_Forward_algorithm_for_reinforcement_learning.pdf)
+
 ### 1 survival focused
 <img src="results/report/surv-focused_vs_rnd.png" alt="Cartpole survvsrnd" width="50%">
+
 ### 2 ddqn cartpole (vector world, MLP)
 <img src="results/FF_Qlearning/10_training_DQL_results.png" alt="Cartpole FF" width="50%">
+
 ### 3 ddqn breakout (image world, CNN/MLP)
 <img src="results/report/FF_DQN_Advanced_2ndFE.png" alt="Cartpole res" width="50%">
