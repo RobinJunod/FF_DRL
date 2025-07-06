@@ -55,9 +55,11 @@ cd FF_DRL
 # 2 — create *identical* environment
 conda env create -f environment.yml
 conda activate ...
+```
+
 
 ## Detailed Results
-Take a look at the pdf report.
+Take a look at the pdf report.(results/Forward_Forward_algorithm_for_reinforcement_learning.pdf)
 ### 1 survival focused
 <img src="results/report/surv-focused_vs_rnd.png" alt="Cartpole survvsrnd" width="50%">
 ### 2 ddqn cartpole (vector world, MLP)
