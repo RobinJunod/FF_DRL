@@ -58,8 +58,8 @@ conda activate ...
 ```
 
 
-## Detailed Results
-[Take a look at the PDF report](results/Forward_Forward_algorithm_for_reinforcement_learning.pdf)
+## 📑 Detailed Results
+[Take a look at the FULL report for this project](results/Forward_Forward_algorithm_for_reinforcement_learning.pdf)
 
 ### 1 survival focused
 <img src="results/report/surv-focused_vs_rnd.png" alt="Cartpole survvsrnd" width="50%">
