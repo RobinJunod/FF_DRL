@@ -1,6 +1,6 @@
 # 🚀 Forward-Forward RL: Backprop-Free Deep Reinforcement Learning
 
-> **EPFL Project · Robotics & Data Science**  
+> **EPFL/SDSC Project · Robotics & Data Science**  
 > **Author :** Robin Junod · **Supervisor :** Giulio Romanelli
 
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)  [![PyTorch](https://img.shields.io/badge/pytorch-2.2-orange)](https://pytorch.org/)  [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
